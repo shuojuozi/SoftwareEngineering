@@ -54,6 +54,8 @@ public class BudgetGoalsPane {
                 messageField
         );
 
+        public VBox getView1(){}
+
         return container;
     }
 }
