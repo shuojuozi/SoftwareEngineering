@@ -5,7 +5,7 @@ import java.io.File;
 
 public class MainApp {
     public static void main(String[] args) {
-        String csvInput = "C:/Users/rebornxd/Desktop/SoftEngineering/project/CsvTransfer/data/微信支付账单(20250225-20250324).csv";
+        String csvInput = "C:\\Users\\rebornxd\\Desktop\\SoftEngineering\\project\\CsvTransfer\\data\\微信支付账单(20250311-20250411).csv";
         
         // 从输入文件路径生成输出文件路径
         File inputFile = new File(csvInput);
