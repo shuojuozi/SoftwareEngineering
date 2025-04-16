@@ -10,7 +10,7 @@ import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
-import os
+//import os
 public class Main extends Application {
 
     private BorderPane root;
@@ -45,8 +45,7 @@ public class Main extends Application {
         transactionLabel.setOnMouseClicked(e -> root.setCenter(new Label("Transaction details page...")));
         classifiedLabel.setOnMouseClicked(e -> root.setCenter(new Label("Classified management page...")));
         budgetLabel.setOnMouseClicked(e -> root.setCenter(new BudgetGoalsPane().getView()));  // 调用拆分出的类
-        analysisLabel.setOnMouseClicked(e -> root.setCenter(new Label("Analysis and report page...")));
-        testerLabel.setOnMouseClicked(e -> root.setCenter(new Label("Tester page...")));
+        analysisLabel.setOnMouseClicked(e -> root.setCenter(new AnalysisReportPane().getView()));
 
         box.getChildren().addAll(
                 dashboardLabel, tradeLabel, transactionLabel,
