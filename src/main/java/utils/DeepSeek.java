@@ -76,8 +76,15 @@ public class DeepSeek {
         }
     }
 
+    /**
+     * 使用DeepSeek对账单进行分类
+     *
+     * @param transactionId 账单的id
+     * @return DeepSeek返回的分类结果
+     */
     public static String classifyTransaction(String transactionId) {
-        List<Transaction> transactions = JsonUtils.readTransactionsFromClasspath("1.json");
+        transactionId = "\"" + transactionId + "\"";
+        List<Transaction> transactions = JsonUtils.readTransactionsFromClasspath("transactionData.json");
         Transaction transaction = JsonUtils.findTransactionById(transactions, transactionId);
         if (transaction == null) return null;
         OkHttpClient client = new OkHttpClient().newBuilder()
@@ -92,7 +99,7 @@ public class DeepSeek {
         String jsonBody = "{\n" +
                 "  \"messages\": [\n" +
                 "    {\n" +
-                "      \"content\": \"You are a helpful assistant that classifies bill items into categories such as groceries, rent, entertainment, utilities, etc. Please classify the bill item below into one of these categories. Respond with only the category.\",\n" +
+                "      \"content\": \"You are a helpful assistant that classifies bill items into categories such as Food and Dining, Transportation, Housing, Entertainment, Shopping, HealthcareEducation and Training, Communication, Finance and Investment. Please classify the bill item below into one of these categories. Respond with only the category.\",\n" +
                 "      \"role\": \"system\"\n" +
                 "    },\n" +
                 "    {\n" +
