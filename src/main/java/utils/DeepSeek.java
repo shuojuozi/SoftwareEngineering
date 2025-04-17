@@ -133,7 +133,7 @@ public class DeepSeek {
                 JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
 
                 String category = contentNode.asText();
-                JsonUtils.updateTransactionTypeById(transactionId, category);
+                JsonUtils.updateTransactionTypeById(transactionId, "\"" + category + "\"");
 
                 return contentNode.asText();
             }
