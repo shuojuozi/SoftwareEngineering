@@ -1,5 +1,7 @@
 package utils;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import pojo.Transaction;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -58,7 +60,7 @@ public class JsonUtils {
 
     /**
      * 读取多个 JSON 文件，合并并去重。冲突策略：如果 transactionId 相同，则保留“交易时间较晚”的那条。
-     * 可根据需求自行更改逻辑。
+     * 可根据需求自行更改逻辑。(合并后顺序会改变)
      */
     public static List<Transaction> mergeAndRemoveDuplicates(List<String> jsonPaths) throws IOException {
         // 用 Map<transactionId, Transaction> 来存储最终结果，以 transactionId 去重
@@ -282,6 +284,38 @@ public class JsonUtils {
             System.out.println("成功处理 " + transactions.size() + " 条交易记录，已输出到 " + outputJson);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    public static void updateTransactionTypeById(String transactionId, String newType) throws IOException {
+        if (!Files.exists(Paths.get(DATA_JSON_PATH))) {
+            System.err.println("no data exist");
+            return;
+        }
+
+        // 读取json文件
+        File jsonFile = new File(DATA_JSON_PATH);
+        JsonNode rootNode = objectMapper.readTree(jsonFile);
+
+        // 遍历 JSON 数组，找到指定 transactionId 的记录并更新 transactionType
+        if (rootNode.isArray()) {
+            Iterator<JsonNode> iterator = rootNode.iterator();
+            while (iterator.hasNext()) {
+                JsonNode transactionNode = iterator.next();
+
+                // 检查该记录的 transactionId 是否匹配
+                if (transactionNode.has("transactionId") && transactionNode.get("transactionId").asText().equals(transactionId)) {
+                    // 找到匹配的记录，更新 transactionType
+                    ((ObjectNode) transactionNode).put("transactionType", newType);
+                    System.out.println("成功更新 transactionId 为 " + transactionId + " 的 transactionType");
+                    break;
+                }
+            }
+
+            // 将更新后的 JSON 数据写回文件
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(jsonFile, rootNode);
+        } else {
+            System.err.println("JSON 文件格式不正确，无法处理");
         }
     }
 }

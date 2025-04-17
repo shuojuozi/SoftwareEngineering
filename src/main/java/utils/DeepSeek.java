@@ -99,7 +99,7 @@ public class DeepSeek {
         String jsonBody = "{\n" +
                 "  \"messages\": [\n" +
                 "    {\n" +
-                "      \"content\": \"You are a helpful assistant that classifies bill items into categories such as Food and Dining, Transportation, Housing, Entertainment, Shopping, HealthcareEducation and Training, Communication, Finance and Investment. Please classify the bill item below into one of these categories. Respond with only the category.\",\n" +
+                "      \"content\": \"You are a helpful assistant that classifies bill items into categories such as Food and Dining, Transportation, Housing, Entertainment, Shopping, HealthcareEducation and Training, Communication, Finance and Investment, transfer accounts. Please classify the bill item below into one of these categories. Respond with only the category.\",\n" +
                 "      \"role\": \"system\"\n" +
                 "    },\n" +
                 "    {\n" +
@@ -131,6 +131,9 @@ public class DeepSeek {
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode root = mapper.readTree(response.body().string());
                 JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
+
+                String category = contentNode.asText();
+                JsonUtils.updateTransactionTypeById(transactionId, category);
 
                 return contentNode.asText();
             }

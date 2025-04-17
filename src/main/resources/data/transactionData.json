@@ -1,6 +1,6 @@
 [ {
   "transactionTime" : "2025-03-05 15:32:46",
-  "transactionType" : "\"转账\"",
+  "transactionType" : "transfer accounts",
   "counterparty" : "\"赵宇辕\"",
   "item" : "\"转账备注:微信转账\"",
   "incExp" : "\"收入\"",
