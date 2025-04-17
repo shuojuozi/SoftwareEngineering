@@ -287,6 +287,12 @@ public class JsonUtils {
         }
     }
 
+    /**
+     * 根据transactionId来更新transactionType为分类结果
+     *
+     * @param transactionId 账单的id
+     * @param newType 分类的结果
+     */
     public static void updateTransactionTypeById(String transactionId, String newType) throws IOException {
         if (!Files.exists(Paths.get(DATA_JSON_PATH))) {
             System.err.println("no data exist");
