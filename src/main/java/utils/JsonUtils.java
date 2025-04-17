@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -28,18 +29,31 @@ public class JsonUtils {
 
     /**
      * 从类路径下的 JSON 文件读取交易数据
+     *
      * @param resourcePath 类路径下的资源文件路径（如 "transactions.json"）
      * @return 交易记录列表（如果文件不存在或解析失败，返回空列表）
      */
     public static List<Transaction> readTransactionsFromClasspath(String resourcePath) {
-        try (InputStream inputStream = JsonUtils.class.getClassLoader().getResourceAsStream("data/" + resourcePath)) {
-            if (inputStream == null) {
-                System.err.println("未找到文件: " + resourcePath);
+//        try (InputStream inputStream = JsonUtils.class.getClassLoader().getResourceAsStream(resourcePath)) {
+//            if (inputStream == null) {
+//                System.err.println("未找到文件: " + resourcePath);
+//                return Collections.emptyList();
+//            }
+//            // 将 JSON 数据解析为 List<Transaction>
+//            return objectMapper.readValue(inputStream, new TypeReference<List<Transaction>>() {});
+//        } catch (IOException e) {
+//            System.err.println("解析 JSON 失败: " + e.getMessage());
+//            return Collections.emptyList();
+//        }
+        String filePath = "src/main/resources/data/" + resourcePath;
+        try (FileInputStream fileInputStream = new FileInputStream(filePath)) {
+            if (fileInputStream == null) {
+                System.err.println("未找到文件: " + filePath);
                 return Collections.emptyList();
             }
             // 将 JSON 数据解析为 List<Transaction>
-            return objectMapper.readValue(inputStream, new TypeReference<List<Transaction>>() {});
-        } catch (IOException e) {
+            return objectMapper.readValue(fileInputStream, new TypeReference<List<Transaction>>() {});
+        } catch (Exception e) {
             System.err.println("解析 JSON 失败: " + e.getMessage());
             return Collections.emptyList();
         }
@@ -47,6 +61,7 @@ public class JsonUtils {
 
     /**
      * 从文件系统路径读取 JSON 数据
+     *
      * @param jsonPath 文件绝对路径（如 "/data/transactions.json"）
      */
     private static List<Transaction> readJsonFile(String jsonPath) throws IOException {
@@ -128,12 +143,18 @@ public class JsonUtils {
      * @return 一个交易记录的对象
      */
     public static Transaction findTransactionById(List<Transaction> transactions, String transactionId) {
-        if (transactions.isEmpty()) return null;
+        if (transactions.isEmpty()) {
+            System.out.println("transactions list is empty");
+            return null;
+        }
+        System.out.println(transactionId);
         for (Transaction transaction : transactions) {
             if (transaction.getTransactionId().equals(transactionId)) {
                 return transaction;
             }
         }
+
+        System.out.println("no id matched");
         return null;
     }
 
@@ -155,19 +176,32 @@ public class JsonUtils {
      *
      * @param csvFilePath csv文件的路径
      */
-    public static void parseCsv2Json(String csvFilePath) throws IOException {
+    public static void parseCsv2Json(String csvFilePath) throws IOException, InterruptedException {
         List<Transaction> transactions = parseCsvToTransactions(csvFilePath);
 
         // 如果已有data.json文件，则追加进去
         if (Files.exists(Paths.get(DATA_JSON_PATH))) {
             writeTransactionsToJson(transactions, TEMP_JSON_PATH);
+
+            Path path = Paths.get("src/main/resources/data/temp.json");
+            if (Files.exists(path)) {
+                System.out.println("Found temp.json at: " + path);
+            } else {
+                System.out.println("temp.json not found at: " + path);
+            }
+
+            System.out.println("start classifying");
+
+            // 对temp.json进行分类
+            DeepSeek.classifyBatchTransaction(TEMP_JSON_PATH);
+
+            System.out.println("stop classifying");
+
             List<String> jsonPaths = Arrays.asList(DATA_JSON_PATH, TEMP_JSON_PATH);
             List<Transaction> mergedTransactions = mergeAndRemoveDuplicates(jsonPaths);
             writeTransactionsToJson(mergedTransactions, DATA_JSON_PATH);
             Files.delete(Paths.get(TEMP_JSON_PATH));
-        } else {
-            // 如果不存在data.json文件则新建
-            writeTransactionsToJson(transactions, DATA_JSON_PATH);
+            System.out.println("temp.json deleted");
         }
     }
 
@@ -293,10 +327,14 @@ public class JsonUtils {
      * @param transactionId 账单的id
      * @param newType 分类的结果
      */
-    public static void updateTransactionTypeById(String transactionId, String newType) throws IOException {
+    public synchronized static void updateTransactionTypeById(String transactionId, String newType) throws IOException {
         if (!Files.exists(Paths.get(DATA_JSON_PATH))) {
             System.err.println("no data exist");
             return;
+        }
+
+        if (!transactionId.startsWith("\"")) {
+            transactionId = "\"" + transactionId + "\"";
         }
 
         // 读取json文件
@@ -312,7 +350,7 @@ public class JsonUtils {
                 // 检查该记录的 transactionId 是否匹配
                 if (transactionNode.has("transactionId") && transactionNode.get("transactionId").asText().equals(transactionId)) {
                     // 找到匹配的记录，更新 transactionType
-                    ((ObjectNode) transactionNode).put("transactionType", newType);
+                    ((ObjectNode) transactionNode).put("transactionType", "\"" + newType + "\"");
                     System.out.println("成功更新 transactionId 为 " + transactionId + " 的 transactionType");
                     break;
                 }
@@ -323,5 +361,66 @@ public class JsonUtils {
         } else {
             System.err.println("JSON 文件格式不正确，无法处理");
         }
+    }
+
+    /**
+     * 加入新数据时对新数据进行分类
+     *
+     * @param transactionId 账单的id
+     * @param newType 分类的结果
+     */
+    public synchronized static void updateTempTransactionTypeById(String transactionId, String newType) throws IOException {
+        if (!Files.exists(Paths.get(TEMP_JSON_PATH))) {
+            System.err.println("no data exist");
+            return;
+        }
+
+        // 读取json文件
+        File jsonFile = new File(TEMP_JSON_PATH);
+        JsonNode rootNode = objectMapper.readTree(jsonFile);
+
+        // 遍历 JSON 数组，找到指定 transactionId 的记录并更新 transactionType
+        if (rootNode.isArray()) {
+            Iterator<JsonNode> iterator = rootNode.iterator();
+            while (iterator.hasNext()) {
+                JsonNode transactionNode = iterator.next();
+
+                // 检查该记录的 transactionId 是否匹配
+                if (transactionNode.has("transactionId") && transactionNode.get("transactionId").asText().equals(transactionId)) {
+                    // 找到匹配的记录，更新 transactionType
+                    ((ObjectNode) transactionNode).put("transactionType", "\"" + newType + "\"");
+                    System.out.println("成功更新 transactionId 为 " + transactionId + " 的 transactionType");
+                    break;
+                } else if (!transactionNode.has("transactionId")){
+                    System.out.println("no id");
+                }
+            }
+
+            // 将更新后的 JSON 数据写回文件
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(jsonFile, rootNode);
+        } else {
+            System.err.println("JSON 文件格式不正确，无法处理");
+        }
+    }
+
+    /**
+     * 获取一个transaction的json文件的所有id
+     *
+     * @param jsonPath json文件的路径
+     * @return id的列表
+     */
+    public static List<String> getAllTransactionIds(String jsonPath) throws IOException {
+        // 读取 JSON 文件并将其转换为 Transaction 对象列表
+        List<Transaction> transactions = objectMapper.readValue(new File(jsonPath), objectMapper.getTypeFactory().constructCollectionType(List.class, Transaction.class));
+
+        // 创建一个 List 来存储所有的 transactionId
+        List<String> transactionIds = new ArrayList<>();
+
+        // 遍历所有交易记录并获取 transactionId
+        for (Transaction transaction : transactions) {
+            transactionIds.add(transaction.getTransactionId());  // 假设 Transaction 类中有 getTransactionId() 方法
+        }
+
+        return transactionIds;
     }
 }

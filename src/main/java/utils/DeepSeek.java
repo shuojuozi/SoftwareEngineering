@@ -9,6 +9,9 @@ import pojo.Transaction;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -16,6 +19,7 @@ public class DeepSeek {
     private static final Logger logger = Logger.getLogger(DeepSeek.class.getName());
     private static final String API_KEY = ConfigUtil.getApiKey();
     private static final String API_URL = "https://api.deepseek.com/chat/completions";
+    private static final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
     /**
      * 和DeepSeek进行对话
@@ -83,10 +87,16 @@ public class DeepSeek {
      * @return DeepSeek返回的分类结果
      */
     public static String classifyTransaction(String transactionId) {
-        transactionId = "\"" + transactionId + "\"";
-        List<Transaction> transactions = JsonUtils.readTransactionsFromClasspath("transactionData.json");
+        if (!transactionId.startsWith("\"")) {
+            transactionId = "\"" + transactionId + "\"";
+        }
+        List<Transaction> transactions;
+        transactions = JsonUtils.readTransactionsFromClasspath("temp.json");
         Transaction transaction = JsonUtils.findTransactionById(transactions, transactionId);
-        if (transaction == null) return null;
+        if (transaction == null) {
+            System.out.println("transaction is null");
+            return null;
+        }
         OkHttpClient client = new OkHttpClient().newBuilder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(60, TimeUnit.SECONDS)
@@ -128,12 +138,16 @@ public class DeepSeek {
                 System.err.println("请求失败，状态码：" + response.code());
                 return "请求失败：" + response.body().string();
             } else {
+
+                System.out.println("request");
+
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode root = mapper.readTree(response.body().string());
                 JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
 
                 String category = contentNode.asText();
-                JsonUtils.updateTransactionTypeById(transactionId, "\"" + category + "\"");
+                System.out.println("update");
+                JsonUtils.updateTempTransactionTypeById(transactionId, category);
 
                 return contentNode.asText();
             }
@@ -141,5 +155,37 @@ public class DeepSeek {
             e.printStackTrace();
             return "调用失败：" + e.getMessage();
         }
+    }
+
+    /**
+     * 批量对json文件里的transaction进行分类
+     *
+     * @param jsonPath json文件的路径
+     */
+    public static void classifyBatchTransaction(String jsonPath) throws IOException, InterruptedException {
+        List<String> ids = JsonUtils.getAllTransactionIds(jsonPath);
+
+        System.out.println(ids);
+
+        // 使用 CountDownLatch 来确保所有异步请求都完成后再关闭线程池
+        CountDownLatch latch = new CountDownLatch(ids.size());
+
+        for (String id : ids) {
+            executorService.submit(() -> {
+                try {
+                    String category = classifyTransaction(id);
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        System.out.println("Waiting for all tasks to finish...");
+        // 等待所有请求完成
+        latch.await();
+        System.out.println("All tasks completed.");
+
+
+        executorService.shutdown();
     }
 }
