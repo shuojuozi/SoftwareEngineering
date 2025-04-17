@@ -5,8 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import okhttp3.*;
+import pojo.Transaction;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -48,6 +50,63 @@ public class DeepSeek {
                 "}";
 
         // 2. 发送请求
+        RequestBody body = RequestBody.create(jsonBody, mediaType);
+        Request request = new Request.Builder()
+                .url(API_URL)
+                .method("POST", body)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeader("Authorization", "Bearer " + API_KEY)
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                System.err.println("请求失败，状态码：" + response.code());
+                return "请求失败：" + response.body().string();
+            } else {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode root = mapper.readTree(response.body().string());
+                JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
+
+                return contentNode.asText();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return "调用失败：" + e.getMessage();
+        }
+    }
+
+    public static String classifyTransaction(String transactionId) {
+        List<Transaction> transactions = JsonUtils.readTransactionsFromClasspath("1.json");
+        Transaction transaction = JsonUtils.findTransactionById(transactions, transactionId);
+        if (transaction == null) return null;
+        OkHttpClient client = new OkHttpClient().newBuilder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .build();
+        MediaType mediaType = MediaType.parse("application/json");
+
+        String input = transaction.toString().replace("\"", "\\\"").replace("\n", "\\n");
+
+        String jsonBody = "{\n" +
+                "  \"messages\": [\n" +
+                "    {\n" +
+                "      \"content\": \"You are a helpful assistant that classifies bill items into categories such as groceries, rent, entertainment, utilities, etc. Please classify the bill item below into one of these categories. Respond with only the category.\",\n" +
+                "      \"role\": \"system\"\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"content\": \"" + input + "\",\n" +
+                "      \"role\": \"user\"\n" +
+                "    }\n" +
+                "  ],\n" +
+                "  \"model\": \"deepseek-chat\",\n" +
+                "  \"max_tokens\": 2048,\n" +
+                "  \"temperature\": 1,\n" +
+                "  \"tool_choice\": \"none\",\n" +
+                "  \"stream\": false\n" +
+                "}";
+
         RequestBody body = RequestBody.create(jsonBody, mediaType);
         Request request = new Request.Builder()
                 .url(API_URL)
