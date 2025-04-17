@@ -44,4 +44,21 @@ public class JsonUtils {
             return Collections.emptyList();
         }
     }
+
+    /**
+     * 根据transactionId来从transaction列表中找到指定的transaction
+     *
+     * @param transactions 交易记录列表
+     * @param transactionId 交易记录的id
+     * @return 一个交易记录的对象
+     */
+    public static Transaction findTransactionById(List<Transaction> transactions, String transactionId) {
+        if (transactions.isEmpty()) return null;
+        for (Transaction transaction : transactions) {
+            if (transaction.getTransactionId().equals(transactionId)) {
+                return transaction;
+            }
+        }
+        return null;
+    }
 }
