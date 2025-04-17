@@ -7,7 +7,7 @@ import java.util.List;
 
 public class App {
     public static void main(String[] args) {
-        String result = DeepSeek.classifyTransaction("4200002635202503247357723190");
+        String result = DeepSeek.classifyTransaction("1000050001202503050621116686652");
         System.out.println(result);
     }
 }
