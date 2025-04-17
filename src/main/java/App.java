@@ -6,8 +6,8 @@ import java.io.IOException;
 import java.util.List;
 
 public class App {
-    public static void main(String[] args) {
-        String result = DeepSeek.classifyTransaction("1000050001202503050621116686652");
-        System.out.println(result);
+    public static void main(String[] args) throws IOException, InterruptedException {
+//        JsonUtils.parseCsv2Json("src/main/resources/data/csv/微信支付账单(20250225-20250324).csv");
+        JsonUtils.updateTransactionTypeById("1000050001202503050621116686652", "test");
     }
 }
