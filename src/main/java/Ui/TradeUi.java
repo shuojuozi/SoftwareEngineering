@@ -1,65 +1,87 @@
 package Ui;
 
-import javafx.application.Application;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
-public class TradeUi extends Application {
+public class TradeUi extends Ui.NavigationSuper {
+
     private BorderPane root;
 
-    @Override
-    public void start(Stage primaryStage) {
-        // 创建主布局
+    public TradeUi() {
+        // 初始化其他组件
         root = new BorderPane();
-        // 添加侧边栏
-        root.setLeft(createSidebar());
-        // 初始化默认显示交易页
-        root.setCenter(createTradeManagementPage());
-        // 创建场景并设置舞台
-        Scene scene = new Scene(root, 800, 600);
-        primaryStage.setTitle("Transaction Details");
-        primaryStage.setScene(scene);
-        primaryStage.show();
+        root.setCenter(createDashboardPane());
+        root.setRight(createTradeManagementPage());
     }
 
-    // 创建侧边栏
-    private VBox createSidebar() {
-        VBox box = new VBox(15);
-        box.setPadding(new Insets(20));
-        box.setStyle("-fx-background-color: #f8f9fa;");
+    @Override
+    public void start(Stage stage) {
+        root = new BorderPane();
+        root.setLeft(createSidebar()); // Sidebar for navigation
+        root.setCenter(createDashboardPane()); // Default page (Dashboard)
 
-        Label dashboardLabel = new Label("📊 Dashboard");
-        Label tradeLabel = new Label("Trade management");
-        Label transactionLabel = new Label("Transaction details");
-        Label classifiedLabel = new Label("Classified management of expenditure");
-        Label budgetLabel = new Label("Budgeting and savings goals");
-        Label analysisLabel = new Label("Analysis and report");
-        Label testerLabel = new Label("👤 Tester");
+        Scene scene = new Scene(root, 1200, 700);
+        stage.setScene(scene);
+        stage.setTitle("Financial Dashboard");
+        stage.show();
+    }
 
-        dashboardLabel.setOnMouseClicked(e -> root.setCenter(new Label("Dashboard page...")));
-        tradeLabel.setOnMouseClicked(e -> root.setCenter(createTradeManagementPage())); // 点击 Trade Management
-        classifiedLabel.setOnMouseClicked(e -> root.setCenter(new Label("Classified management page...")));
-        budgetLabel.setOnMouseClicked(e -> root.setCenter(new Label("Budgeting and savings goals page...")));
-        analysisLabel.setOnMouseClicked(e -> root.setCenter(new Label("Analysis and report page...")));
-        testerLabel.setOnMouseClicked(e -> root.setCenter(new Label("Tester page...")));
 
-        box.getChildren().addAll(
-                dashboardLabel, tradeLabel, transactionLabel,
-                classifiedLabel, budgetLabel, analysisLabel, testerLabel
+    public VBox createDashboardPane() {
+        HBox summaryBox = new HBox(20);
+        summaryBox.setPadding(new Insets(20));
+        summaryBox.setAlignment(Pos.CENTER);
+        summaryBox.getChildren().addAll(
+                createInfoCard("Total Assets", "$120,500", "#cce5ff", "#004085"),
+                createInfoCard("Monthly Expense", "$5,200", "#f8d7da", "#721c24"),
+                createInfoCard("Monthly Income", "$7,300", "#d4edda", "#155724"),
+                createInfoCard("Savings Goal Progress", "56%", "#fff3cd", "#856404")
         );
-        return box;
+
+        // Bar Chart
+        CategoryAxis xAxis = new CategoryAxis();
+        NumberAxis yAxis = new NumberAxis();
+        BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
+        barChart.setTitle("Recent Transactions");
+        xAxis.setLabel("Category");
+        yAxis.setLabel("Amount");
+
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.setName("Recent Transactions");
+        series.getData().add(new XYChart.Data<>("Rent", 1100));
+        series.getData().add(new XYChart.Data<>("Groceries", 750));
+        series.getData().add(new XYChart.Data<>("Utilities", 400));
+        series.getData().add(new XYChart.Data<>("Transport", 300));
+        series.getData().add(new XYChart.Data<>("Misc", 500));
+        barChart.getData().add(series);
+
+        // Pie Chart
+        PieChart pieChart = new PieChart();
+        pieChart.setTitle("Spending by Category");
+        pieChart.getData().addAll(
+                new PieChart.Data("Rent", 35),
+                new PieChart.Data("Groceries", 25),
+                new PieChart.Data("Utilities", 10),
+                new PieChart.Data("Transport", 10),
+                new PieChart.Data("Misc", 20)
+        );
+
+        HBox chartsBox = new HBox(20, barChart, pieChart);
+        chartsBox.setPadding(new Insets(20));
+        chartsBox.setAlignment(Pos.CENTER);
+        return new VBox(summaryBox, chartsBox);
     }
 
-    // 创建 Trade Management 页面
-    private VBox createTradeManagementPage() {
+    public static VBox createTradeManagementPage() {
         VBox mainContent = new VBox();
         mainContent.setPadding(new Insets(20));
         mainContent.setSpacing(20);
@@ -116,7 +138,6 @@ public class TradeUi extends Application {
         TableColumn<Transaction, String> amountColumn = new TableColumn<>("Amount");
         TableColumn<Transaction, String> categoryColumn = new TableColumn<>("Category");
         TableColumn<Transaction, String> remarksColumn = new TableColumn<>("Remarks");
-        TableColumn<Transaction, String> actionsColumn = new TableColumn<>("Actions");
 
         // 设置每一列的 cellValueFactory，指明如何从 Transaction 中获取数据
         dateColumn.setCellValueFactory(cellData -> cellData.getValue().dateProperty());
@@ -124,7 +145,7 @@ public class TradeUi extends Application {
         categoryColumn.setCellValueFactory(cellData -> cellData.getValue().categoryProperty());
         remarksColumn.setCellValueFactory(cellData -> cellData.getValue().remarksProperty());
 
-        transactionTable.getColumns().addAll(dateColumn, amountColumn, categoryColumn, remarksColumn, actionsColumn);
+        transactionTable.getColumns().addAll(dateColumn, amountColumn, categoryColumn, remarksColumn);
 
         // 添加一些示例数据
         ObservableList<Transaction> transactionData = FXCollections.observableArrayList(
@@ -138,16 +159,16 @@ public class TradeUi extends Application {
         // 设置 TableView 的高度限制
         transactionTable.setMaxHeight(350);
 
-        // 将 TableView 添加到容器中
         transactionListContainer.getChildren().addAll(transactionListLabel, searchField, searchButton, transactionTable);
 
-        // 将所有部分添加到主内容区域
+        //```java
+        // 将所有容器组合在一起
         mainContent.getChildren().addAll(addTransactionContainer, importTransactionsContainer, transactionListContainer);
 
         return mainContent;
     }
 
-    // 创建 Transaction 类表示交易数据
+    // 处理交易数据的 Transaction 类
     public static class Transaction {
         private final SimpleStringProperty date;
         private final SimpleStringProperty amount;
@@ -165,29 +186,28 @@ public class TradeUi extends Application {
             return date.get();
         }
 
-        public String getAmount() {
-            return amount.get();
-        }
-
-        public String getCategory() {
-            return category.get();
-        }
-
-        public String getRemarks() {
-            return remarks.get();
-        }
-
-        // 为每个字段提供 getValue 方法
         public SimpleStringProperty dateProperty() {
             return date;
+        }
+
+        public String getAmount() {
+            return amount.get();
         }
 
         public SimpleStringProperty amountProperty() {
             return amount;
         }
 
+        public String getCategory() {
+            return category.get();
+        }
+
         public SimpleStringProperty categoryProperty() {
             return category;
+        }
+
+        public String getRemarks() {
+            return remarks.get();
         }
 
         public SimpleStringProperty remarksProperty() {
@@ -195,7 +215,25 @@ public class TradeUi extends Application {
         }
     }
 
-    public static void main(String[] args) {
-        launch(args);
+    public HBox createInfoCard(String title, String value, String bgColor, String textColor) {
+        HBox infoCard = new HBox(20);
+        infoCard.setStyle("-fx-background-color: " + bgColor + "; -fx-border-radius: 5;");
+        infoCard.setPadding(new Insets(15));
+        infoCard.setAlignment(Pos.CENTER);
+
+        VBox textBox = new VBox(5);
+        textBox.setStyle("-fx-text-fill: " + textColor + ";");
+        Label titleLabel = new Label(title);
+        titleLabel.setFont(new Font(16));
+        Label valueLabel = new Label(value);
+        valueLabel.setFont(new Font(18));
+        valueLabel.setStyle("-fx-font-weight: bold;");
+
+        textBox.getChildren().addAll(titleLabel, valueLabel);
+        infoCard.getChildren().add(textBox);
+
+        return infoCard;
     }
+
+
 }

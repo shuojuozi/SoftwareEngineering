@@ -4,15 +4,20 @@ import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
+import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
-public class TransactionUi extends Application {
+public class TransactionUi extends Ui.NavigationSuper {
     private BorderPane root;
+
+    public TransactionUi() {
+        root = new BorderPane();
+        root.setLeft(createSidebar());
+        root.setRight(createTransactionDetailPage());
+    }
 
     @Override
     public void start(Stage primaryStage) {
@@ -30,41 +35,9 @@ public class TransactionUi extends Application {
         primaryStage.show();
     }
 
-    // 创建侧边栏
-    private VBox createSidebar() {
-        VBox box = new VBox(15);
-        box.setPadding(new Insets(20));
-        box.setStyle("-fx-background-color: #f8f9fa;");
-
-        // 创建侧边栏标签
-        Label dashboardLabel = new Label("📊 Dashboard");
-        Label tradeLabel = new Label("Trade management");
-        Label transactionLabel = new Label("Transaction details");
-        Label classifiedLabel = new Label("Classified management of expenditure");
-        Label budgetLabel = new Label("Budgeting and savings goals");
-        Label analysisLabel = new Label("Analysis and report");
-        Label testerLabel = new Label("👤 Tester");
-
-        // 为每个标签设置点击事件
-        dashboardLabel.setOnMouseClicked(e -> root.setCenter(new Label("Dashboard page...")));
-        tradeLabel.setOnMouseClicked(e -> root.setCenter(new Label("Trade management page...")));
-        transactionLabel.setOnMouseClicked(e -> root.setCenter(createTransactionDetailPage())); // 关键修改
-        classifiedLabel.setOnMouseClicked(e -> root.setCenter(new Label("Classified management page...")));
-        budgetLabel.setOnMouseClicked(e -> root.setCenter(new Label("Budgeting and savings goals page...")));
-        analysisLabel.setOnMouseClicked(e -> root.setCenter(new Label("Analysis and report page...")));
-        testerLabel.setOnMouseClicked(e -> root.setCenter(new Label("Tester page...")));
-
-        // 将标签加入侧边栏
-        box.getChildren().addAll(
-                dashboardLabel, tradeLabel, transactionLabel,
-                classifiedLabel, budgetLabel, analysisLabel, testerLabel
-        );
-
-        return box;
-    }
 
     // 创建交易详情页面
-    private VBox createTransactionDetailPage() {
+    public static VBox createTransactionDetailPage() {
         VBox mainContent = new VBox();
         mainContent.setPadding(new Insets(20));
 
@@ -80,13 +53,11 @@ public class TransactionUi extends Application {
 
         Button editButton = new Button("Edit");
         editButton.setStyle("-fx-background-color: yellow; -fx-text-fill: black;");
-
         Button deleteButton = new Button("Delete");
         deleteButton.setStyle("-fx-background-color: red; -fx-text-fill: white;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS); // 使按钮靠右
-
         header.getChildren().addAll(titleLabel, spacer, editButton, deleteButton);
 
         // 交易详情区域
@@ -94,7 +65,6 @@ public class TransactionUi extends Application {
         transactionDetails.setPadding(new Insets(20));
         transactionDetails.setVgap(10);
         transactionDetails.setHgap(10);
-
         transactionDetails.add(new Label("Date:"), 0, 0);
         transactionDetails.add(new Label("2025-04-15"), 1, 0);
         transactionDetails.add(new Label("Amount:"), 0, 1);
@@ -108,18 +78,15 @@ public class TransactionUi extends Application {
         VBox modificationHistory = new VBox();
         modificationHistory.setPadding(new Insets(20));
         modificationHistory.setSpacing(5);
-
         modificationHistory.getChildren().add(new Label("Modification History"));
         modificationHistory.getChildren().add(new Label("2025-04-14: Transaction created."));
         modificationHistory.getChildren().add(new Label("2025-04-15: Amount changed from 50.00 to 100.00."));
 
-        // 汇总
+        // 汇总所有部分
         mainContent.getChildren().addAll(header, transactionDetails, modificationHistory);
 
         return mainContent;
     }
 
-    public static void main(String[] args) {
-        launch(args);
-    }
+
 }
