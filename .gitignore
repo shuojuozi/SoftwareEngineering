@@ -2,3 +2,5 @@ src/main/resources/config.properties
 
 # Ignore target folder
 /target/
+/target/classes/
+/target/maven-status/
