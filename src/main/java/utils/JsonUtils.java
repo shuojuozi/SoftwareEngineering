@@ -12,7 +12,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class JsonUtils {
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -62,7 +65,7 @@ public class JsonUtils {
     /**
      * 从文件系统路径读取 JSON 数据
      *
-     * @param jsonPath 文件绝对路径（如 "/data/transactions.json"）
+     * @param jsonPath 文件路径
      */
     private static List<Transaction> readJsonFile(String jsonPath) throws IOException {
         File f = new File(jsonPath);
@@ -422,5 +425,28 @@ public class JsonUtils {
         }
 
         return transactionIds;
+    }
+
+    /**
+     * 按年和月筛选账单
+     *
+     * @param year 账单的年份
+     * @param month 账单的月份
+     * @return 筛选后的账单列表
+     */
+    public static List<Transaction> getTransactionsByMonth(int year, int month) {
+        List<Transaction> transactions = readTransactionsFromClasspath("transactionData.json");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        return transactions.stream()
+                .filter(t -> {
+                    try {
+                        LocalDateTime dateTime = LocalDateTime.parse(t.getTransactionTime(), formatter);
+                        return dateTime.getYear() == year && dateTime.getMonthValue() == month;
+                    } catch (Exception e) {
+                        System.err.println("日期格式错误: " + t.getTransactionTime());
+                        return false;
+                    }
+                })
+                .collect(Collectors.toList());
     }
 }
