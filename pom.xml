@@ -42,6 +42,7 @@
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
         </dependency>
+
         <!-- org.json dependency -->
         <dependency>
             <groupId>org.json</groupId>
@@ -49,6 +50,7 @@
             <version>20210307</version>
         </dependency>
         <!--  JavaFX Dependencies  -->
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
@@ -61,6 +63,11 @@
             <version>19</version>
             <!--  Choose the JavaFX version you want  -->
         </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20210307</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -71,7 +78,9 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
+
                     <mainClass>App</mainClass>
+
                 </configuration>
             </plugin>
         </plugins>

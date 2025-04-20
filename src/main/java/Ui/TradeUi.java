@@ -151,6 +151,7 @@ public class TradeUi extends NavigationSuper {
         });
 
 
+
         return mainContent;
     }
 
@@ -230,4 +231,6 @@ public class TradeUi extends NavigationSuper {
         alert.setContentText(message);
         alert.showAndWait();
     }
+
 }
+
