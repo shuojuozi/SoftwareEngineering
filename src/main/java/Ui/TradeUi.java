@@ -6,234 +6,96 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.chart.*;
 import javafx.scene.control.*;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import pojo.Transaction;
+import utils.JsonUtils;
 
-public class TradeUi extends Ui.NavigationSuper {
+import java.io.File;
 
+/**
+ * TradeUi —— 手动录入 + 拖拽/浏览导入，风格统一。
+ */
+public class TradeUi extends NavigationSuper {
     private BorderPane root;
+    private static final ObservableList<Transaction> transactionData = FXCollections.observableArrayList();
 
     public TradeUi() {
-        // 初始化其他组件
         root = new BorderPane();
-        root.setCenter(createDashboardPane());
-        root.setRight(createTradeManagementPage());
+        root.setLeft(createSidebar());
+        root.setCenter(createTradeManagementPage());
     }
 
-    @Override
-    public void start(Stage stage) {
-        root = new BorderPane();
-        root.setLeft(createSidebar()); // Sidebar for navigation
-        root.setCenter(createDashboardPane()); // Default page (Dashboard)
-
-        Scene scene = new Scene(root, 1200, 700);
-        stage.setScene(scene);
-        stage.setTitle("Financial Dashboard");
-        stage.show();
+    @Override public void start(Stage stage) {
+        root = new BorderPane(); root.setLeft(createSidebar()); root.setCenter(createTradeManagementPage());
+        stage.setScene(new Scene(root,1200,700)); stage.setTitle("Transaction Management"); stage.show();
     }
 
-
-    public VBox createDashboardPane() {
-        HBox summaryBox = new HBox(20);
-        summaryBox.setPadding(new Insets(20));
-        summaryBox.setAlignment(Pos.CENTER);
-        summaryBox.getChildren().addAll(
-                createInfoCard("Total Assets", "$120,500", "#cce5ff", "#004085"),
-                createInfoCard("Monthly Expense", "$5,200", "#f8d7da", "#721c24"),
-                createInfoCard("Monthly Income", "$7,300", "#d4edda", "#155724"),
-                createInfoCard("Savings Goal Progress", "56%", "#fff3cd", "#856404")
-        );
-
-        // Bar Chart
-        CategoryAxis xAxis = new CategoryAxis();
-        NumberAxis yAxis = new NumberAxis();
-        BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
-        barChart.setTitle("Recent Transactions");
-        xAxis.setLabel("Category");
-        yAxis.setLabel("Amount");
-
-        XYChart.Series<String, Number> series = new XYChart.Series<>();
-        series.setName("Recent Transactions");
-        series.getData().add(new XYChart.Data<>("Rent", 1100));
-        series.getData().add(new XYChart.Data<>("Groceries", 750));
-        series.getData().add(new XYChart.Data<>("Utilities", 400));
-        series.getData().add(new XYChart.Data<>("Transport", 300));
-        series.getData().add(new XYChart.Data<>("Misc", 500));
-        barChart.getData().add(series);
-
-        // Pie Chart
-        PieChart pieChart = new PieChart();
-        pieChart.setTitle("Spending by Category");
-        pieChart.getData().addAll(
-                new PieChart.Data("Rent", 35),
-                new PieChart.Data("Groceries", 25),
-                new PieChart.Data("Utilities", 10),
-                new PieChart.Data("Transport", 10),
-                new PieChart.Data("Misc", 20)
-        );
-
-        HBox chartsBox = new HBox(20, barChart, pieChart);
-        chartsBox.setPadding(new Insets(20));
-        chartsBox.setAlignment(Pos.CENTER);
-        return new VBox(summaryBox, chartsBox);
-    }
-
+    /* ---------------- 主界面 ---------------- */
     public static VBox createTradeManagementPage() {
-        VBox mainContent = new VBox();
-        mainContent.setPadding(new Insets(20));
-        mainContent.setSpacing(20);
+        VBox main = new VBox(20); main.setPadding(new Insets(20));
 
-        // 第一个容器：Add Transaction Manually
-        VBox addTransactionContainer = new VBox(5); // 减小Spacing，压缩容器
-        addTransactionContainer.setPadding(new Insets(10)); // 减小Padding，压缩容器
-        addTransactionContainer.setStyle("-fx-background-color: #f0f0f0; -fx-border-radius: 5;");
-        Label addTransactionLabel = new Label("Add Transaction Manually");
-        addTransactionLabel.setFont(new Font(18));
-        addTransactionLabel.setStyle("-fx-font-weight: bold;");
-        TextField dateField = new TextField("year-month-day");
-        dateField.setPromptText("Date");
-        TextField amountField = new TextField("Amount");
-        amountField.setPromptText("Amount");
-        ComboBox<String> categoryCombo = new ComboBox<>();
-        categoryCombo.getItems().addAll("¥", "$", "£");
-        categoryCombo.setValue("Category");
-        TextField remarksField = new TextField("Remarks");
-        Button addButton = new Button("Add Transaction");
-        addButton.setStyle("-fx-background-color: blue; -fx-text-fill: white;");
-        addTransactionContainer.getChildren().addAll(addTransactionLabel, dateField, amountField, categoryCombo, remarksField, addButton);
+        /* ===== 1. 手动添加卡片 ===== */
+        VBox addCard = new VBox(8);
+        addCard.setPadding(new Insets(15));
+        addCard.setStyle("-fx-background-color:#f0f0f0; -fx-border-radius:5; -fx-background-radius:5;");
+        Label addLbl = new Label("Add Transaction Manually"); addLbl.setFont(new Font(18)); addLbl.setStyle("-fx-font-weight:bold;");
 
-        // 第二个容器：Import Transactions
-        VBox importTransactionsContainer = new VBox(5); // 减小Spacing值使得容器更加紧凑
-        importTransactionsContainer.setPadding(new Insets(10)); // 减小Padding
-        Label importTransactionsLabel = new Label("Import Transactions");
-        importTransactionsLabel.setFont(new Font(18));
-        importTransactionsLabel.setStyle("-fx-font-weight: bold;");
-        Button chooseFileButton = new Button("Choose File");
-        chooseFileButton.setStyle("-fx-background-color: gray; -fx-text-fill: white;");
-        TextField chooseFileField = new TextField(); // 新增文本框
-        chooseFileField.setPromptText("File path");
-        Button importRecordsButton = new Button("Import Records");
-        importRecordsButton.setStyle("-fx-background-color: green; -fx-text-fill: white;");
-        TextField importRecordsField = new TextField(); // 新增文本框
-        importRecordsField.setPromptText("Additional info");
-        importTransactionsContainer.getChildren().addAll(importTransactionsLabel, chooseFileButton, chooseFileField, importRecordsButton, importRecordsField);
+        TextField dateField = field("year-month-day hour:minute:second");
+        TextField cpField = field("Counterparty");
+        TextField itemField = field("Item");
+        TextField amtField = field("Amount");
+        TextField payField = field("Payment Method");
+        TextField statusField = field("Status");
+        TextField txIdField = field("Transaction ID");
+        TextField mchIdField = field("Merchant ID");
+        TextField noteField = field("Remarks");
+        Button addBtn = btn("Add Transaction");
+        addBtn.setOnAction(e->handleManualAdd(dateField,cpField,itemField,amtField,payField,statusField,txIdField,mchIdField,noteField));
+        addCard.getChildren().addAll(addLbl,dateField,cpField,itemField,amtField,payField,statusField,txIdField,mchIdField,noteField,addBtn);
 
-        // 第三个容器：Transaction List (更改为使用 TableView)
-        VBox transactionListContainer = new VBox(15); // 增加Spacing，使内容更舒适
-        transactionListContainer.setPadding(new Insets(20)); // 增加Padding来调整容器大小
-        Label transactionListLabel = new Label("Transaction List");
-        transactionListLabel.setFont(new Font(18));
-        transactionListLabel.setStyle("-fx-font-weight: bold;");
-        TextField searchField = new TextField("Search transactions...");
-        Button searchButton = new Button("Search");
+        /* ===== 2. CSV 导入卡片（放在手动添加下方，样式一致） ===== */
+        VBox importCard = new VBox(10);
+        importCard.setAlignment(Pos.CENTER);
+        importCard.setPadding(new Insets(15));
+        importCard.setStyle("-fx-background-color:#f0f0f0; -fx-border-radius:5; -fx-background-radius:5; -fx-border-color:#999; -fx-border-style:dashed;");
+        Label importLbl = new Label("Drag CSV here or click to browse"); importLbl.setFont(new Font(16));
+        Button browseBtn = btn("Browse…");
+        importCard.getChildren().addAll(importLbl,browseBtn);
+        importCard.setOnDragOver(e->{if(e.getDragboard().hasFiles())e.acceptTransferModes(TransferMode.COPY);e.consume();});
+        importCard.setOnDragDropped(TradeUi::handleFileDrop);
+        browseBtn.setOnAction(e->{FileChooser fc=new FileChooser();fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV","*.csv"));File f=fc.showOpenDialog(null);if(f!=null)processCsv(f);});
 
-        // 创建 TableView 用于显示交易详情
-        TableView<Transaction> transactionTable = new TableView<>();
+        /* ===== 3. 交易列表按钮 ===== */
+        HBox listBtns = TradeListUi.createTradeButton();
 
-        // 创建并添加表格列
-        TableColumn<Transaction, String> dateColumn = new TableColumn<>("Date");
-        TableColumn<Transaction, String> amountColumn = new TableColumn<>("Amount");
-        TableColumn<Transaction, String> categoryColumn = new TableColumn<>("Category");
-        TableColumn<Transaction, String> remarksColumn = new TableColumn<>("Remarks");
-
-        // 设置每一列的 cellValueFactory，指明如何从 Transaction 中获取数据
-        dateColumn.setCellValueFactory(cellData -> cellData.getValue().dateProperty());
-        amountColumn.setCellValueFactory(cellData -> cellData.getValue().amountProperty());
-        categoryColumn.setCellValueFactory(cellData -> cellData.getValue().categoryProperty());
-        remarksColumn.setCellValueFactory(cellData -> cellData.getValue().remarksProperty());
-
-        transactionTable.getColumns().addAll(dateColumn, amountColumn, categoryColumn, remarksColumn);
-
-        // 添加一些示例数据
-        ObservableList<Transaction> transactionData = FXCollections.observableArrayList(
-                new Transaction("2025-04-16", "$100", "Food", "Lunch with friends"),
-                new Transaction("2025-04-15", "£50", "Transportation", "Taxi fare"),
-                new Transaction("2025-04-16", "¥500", "Food", "Dinner with friends")
-        );
-
-        transactionTable.setItems(transactionData);
-
-        // 设置 TableView 的高度限制
-        transactionTable.setMaxHeight(350);
-
-        transactionListContainer.getChildren().addAll(transactionListLabel, searchField, searchButton, transactionTable);
-
-        //```java
-        // 将所有容器组合在一起
-        mainContent.getChildren().addAll(addTransactionContainer, importTransactionsContainer, transactionListContainer);
-
-        return mainContent;
+        main.getChildren().addAll(addCard, importCard, new Separator(), listBtns);
+        return main;
     }
 
-    // 处理交易数据的 Transaction 类
-    public static class Transaction {
-        private final SimpleStringProperty date;
-        private final SimpleStringProperty amount;
-        private final SimpleStringProperty category;
-        private final SimpleStringProperty remarks;
+    /* ---------------- util: 创建统一风格控件 ---------------- */
+    private static TextField field(String prompt){ TextField f=new TextField(); f.setPromptText(prompt); return f; }
+    private static Button btn(String text){ Button b=new Button(text); b.setStyle("-fx-background-color:#004085; -fx-text-fill:white;"); return b; }
 
-        public Transaction(String date, String amount, String category, String remarks) {
-            this.date = new SimpleStringProperty(date);
-            this.amount = new SimpleStringProperty(amount);
-            this.category = new SimpleStringProperty(category);
-            this.remarks = new SimpleStringProperty(remarks);
-        }
-
-        public String getDate() {
-            return date.get();
-        }
-
-        public SimpleStringProperty dateProperty() {
-            return date;
-        }
-
-        public String getAmount() {
-            return amount.get();
-        }
-
-        public SimpleStringProperty amountProperty() {
-            return amount;
-        }
-
-        public String getCategory() {
-            return category.get();
-        }
-
-        public SimpleStringProperty categoryProperty() {
-            return category;
-        }
-
-        public String getRemarks() {
-            return remarks.get();
-        }
-
-        public SimpleStringProperty remarksProperty() {
-            return remarks;
-        }
+    /* ---------------- 手动添加 ---------------- */
+    private static void handleManualAdd(TextField date,TextField cp,TextField item,TextField amt,TextField pay,TextField status,TextField txId,TextField mchId,TextField note){
+        if(date.getText().isEmpty()||cp.getText().isEmpty()||item.getText().isEmpty()||amt.getText().isEmpty()){alert("All required");return;}
+        try{Double.parseDouble(amt.getText());}catch(NumberFormatException ex){alert("Invalid amount");return;}
+        Transaction t=new Transaction(date.getText(),null,cp.getText(),item.getText(),null,Double.parseDouble(amt.getText()),pay.getText(),status.getText(),txId.getText(),mchId.getText(),note.getText());
+        try{JsonUtils.addManualTransaction(t);alert("Added ✔");}catch(Exception ex){alert(ex.getMessage());}
+        date.clear();cp.clear();item.clear();amt.clear();pay.clear();status.clear();txId.clear();mchId.clear();note.clear();
     }
 
-    public HBox createInfoCard(String title, String value, String bgColor, String textColor) {
-        HBox infoCard = new HBox(20);
-        infoCard.setStyle("-fx-background-color: " + bgColor + "; -fx-border-radius: 5;");
-        infoCard.setPadding(new Insets(15));
-        infoCard.setAlignment(Pos.CENTER);
+    /* ---------------- CSV 处理 ---------------- */
+    private static void handleFileDrop(DragEvent e){ Dragboard db=e.getDragboard(); boolean ok=false; if(db.hasFiles()) for(File f:db.getFiles()) if(f.getName().endsWith(".csv")){processCsv(f); ok=true;} e.setDropCompleted(ok); e.consume(); }
+    private static void processCsv(File f){ try{ JsonUtils.parseCsv2Json(f.getAbsolutePath()); alert("Imported: "+f.getName()); }catch(Exception ex){ alert("Import failed: "+ex.getMessage()); } }
 
-        VBox textBox = new VBox(5);
-        textBox.setStyle("-fx-text-fill: " + textColor + ";");
-        Label titleLabel = new Label(title);
-        titleLabel.setFont(new Font(16));
-        Label valueLabel = new Label(value);
-        valueLabel.setFont(new Font(18));
-        valueLabel.setStyle("-fx-font-weight: bold;");
-
-        textBox.getChildren().addAll(titleLabel, valueLabel);
-        infoCard.getChildren().add(textBox);
-
-        return infoCard;
-    }
-
-
+    /* ---------------- Alert helper ---------------- */
+    private static void alert(String m){ new Alert(Alert.AlertType.INFORMATION,m).showAndWait(); }
 }

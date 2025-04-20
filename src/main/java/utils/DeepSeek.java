@@ -17,7 +17,7 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 /**
- * DeepSeek 封装：多轮对话 + 本地持久化
+ * DeepSeek 封装：多轮对话 + 本地持久化 + 业务助手方法
  */
 public class DeepSeek {
     private static final Logger logger = Logger.getLogger(DeepSeek.class.getName());
@@ -28,7 +28,7 @@ public class DeepSeek {
     /* ---------------- 持久化文件 ---------------- */
     private static final File SESSION_FILE = new File(System.getProperty("user.home"), ".deepseek_sessions.json");
 
-    /** sessionId -> messages (ArrayNode) */
+    /** sessionId -> messages */
     private static final Map<String, ArrayNode> SESSION_MAP = loadSessions();
 
     private static Map<String, ArrayNode> loadSessions() {
@@ -38,7 +38,7 @@ public class DeepSeek {
             if (data.length == 0) return new ConcurrentHashMap<>();
             Map<String, List<Map<String, String>>> raw = mapper.readValue(data, new TypeReference<>() {});
             Map<String, ArrayNode> map = new ConcurrentHashMap<>();
-            raw.forEach((sid,list) -> map.put(sid, mapper.valueToTree(list)));
+            raw.forEach((sid, list) -> map.put(sid, mapper.valueToTree(list)));
             return map;
         } catch (IOException e) {
             logger.warning("读取会话文件失败: " + e.getMessage());
@@ -48,12 +48,11 @@ public class DeepSeek {
 
     private static void persistSessions() {
         try {
-            /* 轻量化存储：只保存 role 与 content 字段 */
-            Map<String,List<Map<String,String>>> out = new HashMap<>();
+            Map<String, List<Map<String, String>>> out = new HashMap<>();
             SESSION_MAP.forEach((sid, arr) -> {
-                List<Map<String,String>> lst = new ArrayList<>();
+                List<Map<String, String>> lst = new ArrayList<>();
                 arr.forEach(n -> lst.add(Map.of("role", n.get("role").asText(), "content", n.get("content").asText())));
-                out.put(sid,lst);
+                out.put(sid, lst);
             });
             mapper.writerWithDefaultPrettyPrinter().writeValue(SESSION_FILE, out);
         } catch (IOException e) {
@@ -80,22 +79,17 @@ public class DeepSeek {
                 return arr;
             });
 
-            // user msg
             ObjectNode userMsg = mapper.createObjectNode();
             userMsg.put("role", "user").put("content", userInput);
             messages.add(userMsg);
 
-            // call api
             String assistantContent = doChatCompletion(messages, apiKey);
 
-            // assistant msg
             ObjectNode assistantMsg = mapper.createObjectNode();
             assistantMsg.put("role", "assistant").put("content", assistantContent);
             messages.add(assistantMsg);
 
-            // persist
             persistSessions();
-
             return assistantContent;
         } catch (IOException e) {
             logger.severe("DeepSeek 调用失败: " + e.getMessage());
@@ -104,7 +98,7 @@ public class DeepSeek {
     }
 
     public static String communicateOnce(String userInput) {
-        return chat("__SINGLE__"+System.nanoTime(), userInput);
+        return chat("__SINGLE__" + System.nanoTime(), userInput);
     }
 
     private static String doChatCompletion(ArrayNode messages, String apiKey) throws IOException {
@@ -132,21 +126,42 @@ public class DeepSeek {
         }
     }
 
-    /* ================= 账单分类（原逻辑保持） ================= */
+    /* ================= 业务助手函数 ================= */
 
+    /**
+     * 分析指定年月账单，并给出预算 / 节流建议
+     * @param year  年份，如 2025
+     * @param month 月份 1-12
+     * @param monthlyIncome 收入（元），可根据 UI 输入而定
+     */
+    public static String budgetSuggestion(int year, int month, double monthlyIncome) {
+        List<Transaction> txs = JsonUtils.getTransactionsByMonth(year, month);
+        if (txs.isEmpty()) return "无账单数据";
+
+        // 将账单列表压缩到 prompt 中（如需进一步精简可仅抽取关键信息）
+        StringBuilder sb = new StringBuilder();
+        txs.forEach(t -> sb.append(t.toString().replace("\n", " ")).append("\n"));
+
+        String prompt = "Here is my recent billing data (" + year + "-" + month + "). Please:\n" +
+                "1. Summarize spending by category and highlight the highest.\n" +
+                "2. Suggest a reasonable budget for next month based on those expenses.\n" +
+                "3. Assuming my monthly income is " + monthlyIncome + " yuan, propose a savings target.\n" +
+                "4. Point out categories that can be reduced and give cost‑saving tips.\n" +
+                "Billing data:\n" + sb;
+
+        // 使用独立 session，方便后续追问
+        String sid = "budget_" + year + "_" + month;
+        return chat(sid, prompt);
+    }
+
+    /* ================= 旧版分类函数保留 ================= */
     public static String classifyTransaction(String transactionId) {
         if (!transactionId.startsWith("\"")) transactionId = "\"" + transactionId + "\"";
-
         List<Transaction> list = JsonUtils.readTransactionsFromClasspath("temp.json");
         Transaction t = JsonUtils.findTransactionById(list, transactionId);
         if (t == null) return null;
-
-        String input = t.toString().replace("\"", "\\\"").replace("\n", "\\n");
-        String prompt = "You are a helpful assistant that classifies bill items into categories "
-                + "such as Food and Dining, Transportation, Housing, Entertainment, Shopping, "
-                + "Healthcare, Education and Training, Communication, Finance and Investment, transfer accounts. "
-                + "Respond with only the category.";
-
+        String input = t.toString().replace("\"", "\\\"").replace("\n", " ");
+        String prompt = "You are a helpful assistant that classifies bill items into categories such as Food and Dining, Transportation, Housing, Entertainment, Shopping, Healthcare, Education and Training, Communication, Finance and Investment, transfer accounts. Respond with only the category.";
         String sid = "classify_" + transactionId;
         chat(sid, prompt);
         return chat(sid, input);
@@ -156,9 +171,7 @@ public class DeepSeek {
         List<String> ids = JsonUtils.getAllTransactionIds(jsonPath);
         CountDownLatch latch = new CountDownLatch(ids.size());
         for (String id : ids) {
-            executorService.submit(() -> {
-                try { classifyTransaction(id); } finally { latch.countDown(); }
-            });
+            executorService.submit(() -> { try { classifyTransaction(id); } finally { latch.countDown(); } });
         }
         latch.await();
     }

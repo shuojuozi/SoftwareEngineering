@@ -1,99 +1,77 @@
 package Ui;
 
-import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
-import javafx.stage.Stage;
+import pojo.Transaction;
+import utils.JsonUtils;
 
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+/**
+ * 更新版 ClassifiedUi —— 去除硬编码月份 & 兼容未加引号的分类字段。
+ */
 public class ClassifiedUi extends NavigationSuper {
-    private BorderPane root;
-
-    public ClassifiedUi() {
-        // Initialize the root layout
-        root = new BorderPane();
-        root.setLeft(createSidebar());
-        root.setCenter(createDashboardPane());
-    }
-
-    @Override
-    public void start(Stage stage) {
-        root = new BorderPane();
-        root.setLeft(createSidebar()); // Sidebar for navigation
-        root.setCenter(createDashboardPane()); // Default page (Dashboard)
-        Scene scene = new Scene(root, 1200, 700);
-        stage.setScene(scene);
-        stage.setTitle("Financial Dashboard");
-        stage.show();
-    }
     public static VBox createDashboardPane() {
+        /* 日期改为当前年月 */
+        LocalDate now = LocalDate.now();
+        List<Transaction> txs = JsonUtils.getTransactionsByMonth(now.getYear(), now.getMonthValue());
 
+        /* 归类并累计 */
+        Map<String, Double> catSum = new HashMap<>();
+        for (Transaction t : txs) {
+            String c = normalize(t.getTransactionType());
+            catSum.merge(c, t.getAmount(), Double::sum);
+        }
+        double housing = catSum.getOrDefault("housing",0.0);
+        double dining  = catSum.getOrDefault("food and dining",0.0);
+        double entertainment = catSum.getOrDefault("entertainment",0.0);
+        double transport = catSum.getOrDefault("transportation",0.0);
+        double shopping = catSum.getOrDefault("shopping",0.0);
+        double health = catSum.getOrDefault("healthcareeducation and training",0.0);
+        double communication = catSum.getOrDefault("communication",0.0);
+        double investment = catSum.getOrDefault("finance and investment",0.0);
+        double transfer = catSum.getOrDefault("transfer accounts",0.0);
 
-        // Bar Chart
-        CategoryAxis xAxis = new CategoryAxis();
-        NumberAxis yAxis = new NumberAxis();
-        BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
-        barChart.setTitle("Recent Transactions");
-        xAxis.setLabel("Category");
-        yAxis.setLabel("Amount");
-        XYChart.Series<String, Number> series = new XYChart.Series<>();
-        series.setName("Recent Transactions");
-        series.getData().addAll(
-                new XYChart.Data<>("Rent", 1100),
-                new XYChart.Data<>("Groceries", 750),
-                new XYChart.Data<>("Utilities", 400),
-                new XYChart.Data<>("Transport", 300),
-                new XYChart.Data<>("Misc", 500)
-        );
-        barChart.getData().add(series);
+        /* 图表 */
+        CategoryAxis x = new CategoryAxis(); NumberAxis y = new NumberAxis();
+        BarChart<String,Number> bar = new BarChart<>(x,y);
+        bar.setTitle("Spending – "+now.getMonth());
+        XYChart.Series<String,Number> s = new XYChart.Series<>();
+        s.getData().addAll(
+                new XYChart.Data<>("Housing",housing),
+                new XYChart.Data<>("Dining",dining),
+                new XYChart.Data<>("Entertainment",entertainment),
+                new XYChart.Data<>("Transport",transport),
+                new XYChart.Data<>("Shopping",shopping),
+                new XYChart.Data<>("Health",health),
+                new XYChart.Data<>("Communication",communication),
+                new XYChart.Data<>("Investment",investment),
+                new XYChart.Data<>("Transfer",transfer));
+        bar.getData().add(s);
 
-        // Pie Chart
-        PieChart pieChart = new PieChart();
-        pieChart.setTitle("Spending by Category");
-        pieChart.getData().addAll(
-                new PieChart.Data("Rent", 35),
-                new PieChart.Data("Groceries", 25),
-                new PieChart.Data("Utilities", 10),
-                new PieChart.Data("Transport", 10),
-                new PieChart.Data("Misc", 20)
-        );
+        PieChart pie = new PieChart(); pie.setTitle("Spending by Category");
+        pie.getData().addAll(
+                new PieChart.Data("Housing",housing),
+                new PieChart.Data("Dining",dining),
+                new PieChart.Data("Entertainment",entertainment),
+                new PieChart.Data("Transport",transport),
+                new PieChart.Data("Shopping",shopping),
+                new PieChart.Data("Health",health),
+                new PieChart.Data("Communication",communication),
+                new PieChart.Data("Investment",investment),
+                new PieChart.Data("Transfer",transfer));
 
-        // Create a container for the charts
-        HBox chartsBox = new HBox(20, pieChart, barChart);
-        chartsBox.setPadding(new Insets(20));
-        chartsBox.setAlignment(Pos.CENTER);
-
-        // Add Category button
-        Button addCategoryButton = new Button("Add Category");
-        addCategoryButton.setOnAction(event -> {
-            // Add your event handling code here
-            System.out.println("Add Category button clicked");
-        });
-
-        VBox dashboardLayout = new VBox(chartsBox, addCategoryButton);
-        dashboardLayout.setAlignment(Pos.CENTER);
-        dashboardLayout.setSpacing(20); // Add some spacing between elements
-
-        return dashboardLayout;
+        HBox charts = new HBox(20,bar,pie); charts.setPadding(new Insets(20)); charts.setAlignment(Pos.CENTER);
+        Button addCat = new Button("Add Category");
+        VBox box = new VBox(charts, addCat); box.setAlignment(Pos.CENTER); box.setSpacing(20);
+        return box;
     }
-    public static VBox createInfoCard(String title, String value, String backgroundColor, String textColor) {
-        VBox infoCard = new VBox(10);
-        infoCard.setStyle("-fx-background-color: " + backgroundColor + "; -fx-border-radius: 10px; -fx-padding: 10;");
-        Label titleLabel = new Label(title);
-        titleLabel.setFont(new Font(16));
-        titleLabel.setStyle("-fx-text-fill: " + textColor + ";");
-        Label valueLabel = new Label(value);
-        valueLabel.setFont(new Font(20));
-        valueLabel.setStyle("-fx-text-fill: " + textColor + ";");
-
-        infoCard.getChildren().addAll(titleLabel, valueLabel);
-        return infoCard;
-    }
-
-
+    private static String normalize(String s){ return s==null?"":s.replace("\"","" ).toLowerCase().trim(); }
 }

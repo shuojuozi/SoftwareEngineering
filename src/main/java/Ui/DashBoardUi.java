@@ -1,124 +1,42 @@
 package Ui;
 
-import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
-import javafx.stage.Stage;
+import pojo.Transaction;
+import utils.JsonUtils;
 
-public class DashBoardUi extends NavigationSuper {
-    private BorderPane root;
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-    public DashBoardUi() {
-        // Initialize the root layout
-        root = new BorderPane();
-        root.setLeft(createSidebar());
-        root.setCenter(createDashboardPane());
+
+/**
+ * 更新版 DashBoardUi —— 同步分类兼容 & 动态年月
+ */
+class DashBoardUi extends NavigationSuper {
+    public static VBox createDashboardPane(){
+        LocalDate now = LocalDate.now();
+        List<Transaction> txs = JsonUtils.getTransactionsByMonth(now.getYear(), now.getMonthValue());
+        Map<String, Double> cat = new HashMap<>(); double total=0;
+        for(Transaction t:txs){
+            String c=normalize(t.getTransactionType());
+            cat.merge(c,t.getAmount(),Double::sum); total+=t.getAmount(); }
+        double housing=cat.getOrDefault("housing",0.0), dining=cat.getOrDefault("food and dining",0.0), entertainment=cat.getOrDefault("entertainment",0.0), transport=cat.getOrDefault("transportation",0.0), shopping=cat.getOrDefault("shopping",0.0), health=cat.getOrDefault("healthcareeducation and training",0.0), communication=cat.getOrDefault("communication",0.0), investment=cat.getOrDefault("finance and investment",0.0), transfer=cat.getOrDefault("transfer accounts",0.0);
+        /* 假设值 */
+        double totalAssets=10000, monthlyIncome=2500, savingsGoal=15000, progress=(totalAssets+monthlyIncome-total)/savingsGoal;
+        HBox summary=new HBox(20, info("Total Assets",totalAssets,"#cce5ff","#004085"), info("Monthly Expense",total,"#f8d7da","#721c24"), info("Monthly Income",monthlyIncome,"#d4edda","#155724"), info("Savings Goal",savingsGoal,"#f8d7da","#721c24"), info("Goal Progress",progress*100,"#fff3cd","#856404")); summary.setPadding(new Insets(20)); summary.setAlignment(Pos.CENTER);
+        CategoryAxis x=new CategoryAxis(); NumberAxis y=new NumberAxis(); BarChart<String,Number> bar=new BarChart<>(x,y);
+        XYChart.Series<String,Number> ser=new XYChart.Series<>(); ser.setName(now.getMonth().toString()); ser.getData().addAll(new XYChart.Data<>("Housing",housing),new XYChart.Data<>("Dining",dining),new XYChart.Data<>("Entertainment",entertainment),new XYChart.Data<>("Transport",transport),new XYChart.Data<>("Shopping",shopping),new XYChart.Data<>("Health",health),new XYChart.Data<>("Communication",communication),new XYChart.Data<>("Investment",investment),new XYChart.Data<>("Transfer",transfer)); bar.getData().add(ser);
+        PieChart pie=new PieChart(); pie.setTitle("Spending"); pie.getData().addAll(new PieChart.Data("Housing",housing),new PieChart.Data("Dining",dining),new PieChart.Data("Entertainment",entertainment),new PieChart.Data("Transport",transport),new PieChart.Data("Shopping",shopping),new PieChart.Data("Health",health),new PieChart.Data("Communication",communication),new PieChart.Data("Investment",investment),new PieChart.Data("Transfer",transfer));
+        HBox charts=new HBox(20,bar,pie); charts.setPadding(new Insets(20)); charts.setAlignment(Pos.CENTER);
+        return new VBox(summary,charts);
     }
-    @Override
-    public void start(Stage stage) {
-        root = new BorderPane();
-        root.setLeft(createSidebar()); // Sidebar for navigation
-        root.setCenter(createDashboardPane()); // Default page (Dashboard)
-        Scene scene = new Scene(root, 1200, 700);
-        stage.setScene(scene);
-        stage.setTitle("Financial Dashboard");
-        stage.show();
-    }
-
-
-
-
-    public static VBox createDashboardPane() {
-        HBox summaryBox = new HBox(20);
-        summaryBox.setPadding(new Insets(20));
-        summaryBox.setAlignment(Pos.CENTER);
-        summaryBox.getChildren().addAll(
-                createInfoCard("Total Assets", "$120,500", "#cce5ff", "#004085"),
-                createInfoCard("Monthly Expense", "$5,200", "#f8d7da", "#721c24"),
-                createInfoCard("Monthly Income", "$7,300", "#d4edda", "#155724"),
-                createInfoCard("Savings Goal Progress", "56%", "#fff3cd", "#856404")
-        );
-
-        // Bar Chart
-        CategoryAxis xAxis = new CategoryAxis();
-        NumberAxis yAxis = new NumberAxis();
-        BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
-        barChart.setTitle("Recent Transactions");
-        xAxis.setLabel("Category");
-        yAxis.setLabel("Amount");
-        XYChart.Series<String, Number> series = new XYChart.Series<>();
-        series.setName("Recent Transactions");
-        series.getData().addAll(
-                new XYChart.Data<>("Rent", 1100),
-                new XYChart.Data<>("Groceries", 750),
-                new XYChart.Data<>("Utilities", 400),
-                new XYChart.Data<>("Transport", 300),
-                new XYChart.Data<>("Misc", 500)
-        );
-        barChart.getData().add(series);
-
-        // Pie Chart
-        PieChart pieChart = new PieChart();
-        pieChart.setTitle("Spending by Category");
-        pieChart.getData().addAll(
-                new PieChart.Data("Rent", 35),
-                new PieChart.Data("Groceries", 25),
-                new PieChart.Data("Utilities", 10),
-                new PieChart.Data("Transport", 10),
-                new PieChart.Data("Misc", 20)
-        );
-
-        HBox chartsBox = new HBox(20, barChart, pieChart);
-        chartsBox.setPadding(new Insets(20));
-        chartsBox.setAlignment(Pos.CENTER);
-        return new VBox(summaryBox, chartsBox);
-    }
-
-    public VBox createTradeManagementPage() {
-        TradeUi tradeUi = new TradeUi();
-        return tradeUi.createTradeManagementPage();
-    }
-
-    public VBox createTransactionDetailPage() {
-        TransactionUi transactionUi = new TransactionUi();
-        return transactionUi.createTransactionDetailPage();
-    }
-
-    /*private VBox createClassifiedPage() {
-        ClassifiedUi classifiedUi = new ClassifiedUi();
-        return classifiedUi.getClassifiedManagementContent();
-    }*/
-
-    private VBox createBudgetingPane() {
-        return new VBox(new Label("Budgeting and savings goals page..."));
-    }
-
-    private VBox createAnalysisPane() {
-        return new VBox(new Label("Analysis and Report page..."));
-    }
-
-    private VBox createTesterPane() {
-        return new VBox(new Label("Tester page..."));
-    }
-    public static VBox createInfoCard(String title, String value, String backgroundColor, String textColor) {
-        VBox infoCard = new VBox(10);
-        infoCard.setStyle("-fx-background-color: " + backgroundColor + "; -fx-border-radius: 10px; -fx-padding: 10;");
-        Label titleLabel = new Label(title);
-        titleLabel.setFont(new Font(16));
-        titleLabel.setStyle("-fx-text-fill: " + textColor + ";");
-        Label valueLabel = new Label(value);
-        valueLabel.setFont(new Font(20));
-        valueLabel.setStyle("-fx-text-fill: " + textColor + ";");
-
-        infoCard.getChildren().addAll(titleLabel, valueLabel);
-        return infoCard;
-    }
-
-
-
+    private static String normalize(String s){ return s==null?"":s.replace("\"","" ).toLowerCase().trim(); }
+    private static VBox info(String t, double v, String bg, String fg){ VBox b=new VBox(10); b.setStyle("-fx-background-color:"+bg+";-fx-background-radius:10;-fx-padding:10;"); Label l1=new Label(t); l1.setFont(new Font(16)); l1.setStyle("-fx-text-fill:"+fg); Label l2=new Label(String.format(v%1.0==v?"$%,.0f":"$%,.2f",v)); l2.setFont(new Font(20)); l2.setStyle("-fx-text-fill:"+fg); b.getChildren().addAll(l1,l2); return b; }
 }
+
