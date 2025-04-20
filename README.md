@@ -100,7 +100,15 @@ src/
 
 ### ▶️ Operation result (v2)
 
+![image-7](version_picture/7.png)
 
+![image-8](version_picture/8.png)
+
+![image-9](version_picture/9.png)
+
+![image-10](version_picture/10.png)
+
+![image-11](version_picture/11.png)
 
 ### 
 <h2 style="font-family: Arial, sans-serif;">Team Member Responsibilities</h2>
@@ -122,7 +130,7 @@ src/
       <td>Deploy Deepseek api, implement csv-to-json format conversion, moddify AI conversation ui and api-setting ui.</td>
     </tr>
     <tr>
-      <td>Linda Li</td>
+      <td>Yeming Ma</td>
       <td>20210002</td>
       <td>210000002</td>
       <td>Backend development, database design</td>
@@ -131,25 +139,25 @@ src/
       <td>Kai Huang</td>
       <td>2022213674</td>
       <td>221170652</td>
-      <td>Designed main UI and classifiedmanagement interface</td>
+      <td>Designed main UI and classifiedmanagement interface.</td>
     </tr>
     <tr>
       <td>Yichen Song</td>
       <td>2022213669</td>
       <td>221170515</td>
-      <td>Designed Budgeting and Analysis interface and write the version introduction</td>
+      <td>Designed Budgeting and Analysis interface and write the version introduction.</td>
     </tr>
     <tr>
-      <td>Jason Chen</td>
-      <td>20210005</td>
-      <td>210000005</td>
-      <td>UI/UX design, frontend support</td>
+      <td>Guangming Guo</td>
+      <td>2022213681</td>
+      <td>221170478</td>
+      <td>Designed Trade and Transaction interface and integrate the pages.</td>
     </tr>
     <tr>
       <td>Ziming Rong</td>
       <td>2022213675</td>
       <td>221170607</td>
-      <td>Backend development, data management</td>
+      <td>Backend development, data management.</td>
     </tr>
   </tbody>
 </table>
