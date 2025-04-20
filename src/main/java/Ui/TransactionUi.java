@@ -1,6 +1,5 @@
 package Ui;
 
-import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -10,7 +9,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
-public class TransactionUi extends Ui.NavigationSuper {
+public class TransactionUi extends NavigationSuper {
     private BorderPane root;
 
     public TransactionUi() {
