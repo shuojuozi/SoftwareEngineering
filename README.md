@@ -100,9 +100,7 @@ src/
 
 ### ▶️ Operation result (v2)
 
-```bash
 
-```
 
 ### 
 <h2 style="font-family: Arial, sans-serif;">Team Member Responsibilities</h2>
@@ -136,10 +134,10 @@ src/
       <td>Designed main UI and classifiedmanagement interface</td>
     </tr>
     <tr>
-      <td>Emma Zhao</td>
-      <td>20210004</td>
-      <td>210000004</td>
-      <td>Documentation, presentation</td>
+      <td>Yichen Song</td>
+      <td>2022213669</td>
+      <td>221170515</td>
+      <td>Designed Budgeting and Analysis interface and write the version introduction</td>
     </tr>
     <tr>
       <td>Jason Chen</td>
