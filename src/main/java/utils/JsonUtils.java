@@ -193,19 +193,29 @@ public class JsonUtils {
                 System.out.println("temp.json not found at: " + path);
             }
 
-            System.out.println("start classifying");
-
             // 对temp.json进行分类
             DeepSeek.classifyBatchTransaction(TEMP_JSON_PATH);
-
-            System.out.println("stop classifying");
 
             List<String> jsonPaths = Arrays.asList(DATA_JSON_PATH, TEMP_JSON_PATH);
             List<Transaction> mergedTransactions = mergeAndRemoveDuplicates(jsonPaths);
             writeTransactionsToJson(mergedTransactions, DATA_JSON_PATH);
             Files.delete(Paths.get(TEMP_JSON_PATH));
-            System.out.println("temp.json deleted");
         }
+    }
+
+    /**
+     * 手动增加账单
+     *
+     * @param transaction 账单对象*/
+    public static void addManualTransaction(Transaction transaction) throws IOException, InterruptedException {
+        List<Transaction> temp = new ArrayList<>();
+        temp.add(transaction);
+        writeTransactionsToJson(temp, TEMP_JSON_PATH);
+        DeepSeek.classifyBatchTransaction(TEMP_JSON_PATH);
+        List<String> jsonPaths = Arrays.asList(DATA_JSON_PATH, TEMP_JSON_PATH);
+        List<Transaction> mergedTransactions = mergeAndRemoveDuplicates(jsonPaths);
+        writeTransactionsToJson(mergedTransactions, DATA_JSON_PATH);
+        Files.delete(Paths.get(TEMP_JSON_PATH));
     }
 
     /**

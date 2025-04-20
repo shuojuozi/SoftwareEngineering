@@ -2,13 +2,9 @@ package Ui;
 
 import javafx.application.Application;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.chart.*;
 import javafx.scene.control.Label;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
 public class NavigationSuper extends Application {
@@ -39,12 +35,12 @@ public class NavigationSuper extends Application {
 
         // Labels for different pages
         box.getChildren().addAll(
-                createSidebarLabel("📊 Dashboard", e -> root.setCenter(Ui.DashBoardUi.createDashboardPane())),
+                createSidebarLabel("📊 Dashboard", e -> root.setCenter(DashBoardUi.createDashboardPane())),
                 createSidebarLabel("Trade management", e -> root.setCenter(TradeUi.createTradeManagementPage())),
                 createSidebarLabel("Transaction details", e -> root.setCenter(TransactionUi.createTransactionDetailPage())),
-                createSidebarLabel("Classified management of expenditure", e -> root.setCenter(Ui.ClassifiedUi.createDashboardPane())),
-                createSidebarLabel("Budgeting and savings goals", e -> root.setCenter(Ui.BudgetUi.createDashboardPane())),
-                createSidebarLabel("Analysis and report", e -> root.setCenter(Ui.AnalysisUi.createDashboardPane()))
+                createSidebarLabel("Classified management of expenditure", e -> root.setCenter(ClassifiedUi.createDashboardPane())),
+                createSidebarLabel("Budgeting and savings goals", e -> root.setCenter(BudgetUi.createDashboardPane())),
+                createSidebarLabel("Analysis and report", e -> root.setCenter(AnalysisUi.createDashboardPane()))
         );
 
         return box;

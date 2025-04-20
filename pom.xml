@@ -52,6 +52,11 @@
             <artifactId>javafx-fxml</artifactId>
             <version>19</version> <!-- Choose the JavaFX version you want -->
         </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20210307</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -62,7 +67,7 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>App</mainClass>
+                    <mainClass>Ui.TradeUi</mainClass>
                 </configuration>
             </plugin>
         </plugins>
