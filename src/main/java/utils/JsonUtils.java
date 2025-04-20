@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -326,8 +327,9 @@ public class JsonUtils {
         // 让输出格式更加美观
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
 
-        try (FileWriter fw = new FileWriter(outputJson)) {
-            mapper.writeValue(fw, transactions);
+        try (OutputStreamWriter writer = new OutputStreamWriter(
+                new FileOutputStream(outputJson), StandardCharsets.UTF_8)) {
+            mapper.writeValue(writer, transactions);
             System.out.println("成功处理 " + transactions.size() + " 条交易记录，已输出到 " + outputJson);
         } catch (IOException e) {
             e.printStackTrace();
