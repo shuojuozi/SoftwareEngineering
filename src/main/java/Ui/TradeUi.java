@@ -152,25 +152,13 @@ public class TradeUi extends NavigationSuper {
                     showAlert("Please use valid amount!");
                     return;
                 }
-                // 确保转换所有需要的字段为 UTF-8 编码
-                String counterpartyText = null;
-                String amountText = null;
-                String paymentMethodText = null;
-                String statusText = null;
-                String transactionIdText = null;
-                String merchantIdText = null;
-                String remarksText = null;
-                try {
-                    counterpartyText = new String(counterpartyField.getText().getBytes("GBK"), "UTF-8");
-                    amountText = new String(amountField.getText().getBytes("GBK"), "UTF-8");
-                    paymentMethodText = new String(paymentMethodField.getText().getBytes("GBK"), "UTF-8");
-                    statusText = new String(statusField.getText().getBytes("GBK"), "UTF-8");
-                    transactionIdText = new String(transactionIdField.getText().getBytes("GBK"), "UTF-8");
-                    merchantIdText = new String(merchantIdField.getText().getBytes("GBK"), "UTF-8");
-                    remarksText = new String(remarksField.getText().getBytes("GBK"), "UTF-8");
-                } catch (Exception exception) {
-                    exception.printStackTrace();
-                }
+                String counterpartyText = counterpartyField.getText();
+                String amountText = amountField.getText();
+                String paymentMethodText = paymentMethodField.getText();
+                String statusText = statusField.getText();
+                String transactionIdText = transactionIdField.getText();
+                String merchantIdText = merchantIdField.getText();
+                String remarksText = remarksField.getText();
                 // 使用转换后的文本来构建 Transaction 对象
                 Transaction newTransaction = new Transaction(
                         dateField.getText(), // 假设日期字段是 UTF-8 编码的
