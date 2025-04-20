@@ -146,10 +146,10 @@ src/
       <td>UI/UX design, frontend support</td>
     </tr>
     <tr>
-      <td>Sophia Liu</td>
-      <td>20210006</td>
-      <td>210000006</td>
-      <td>Project coordination, quality assurance</td>
+      <td>Ziming Rong</td>
+      <td>2022213675</td>
+      <td>221170607</td>
+      <td>Backend development, data management</td>
     </tr>
   </tbody>
 </table>
