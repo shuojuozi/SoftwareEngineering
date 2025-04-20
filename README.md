@@ -105,4 +105,55 @@ src/
 ```
 
 ### 
+<h2 style="font-family: Arial, sans-serif;">Team Member Responsibilities</h2>
+
+<table border="1" cellspacing="0" cellpadding="8" style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
+  <thead>
+    <tr style="background-color: #f2f2f2;">
+      <th>Name</th>
+      <th>Student ID</th>
+      <th>QM ID</th>
+      <th>Work</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Alex Zhang</td>
+      <td>20210001</td>
+      <td>210000001</td>
+      <td>Project planning, frontend development</td>
+    </tr>
+    <tr>
+      <td>Linda Li</td>
+      <td>20210002</td>
+      <td>210000002</td>
+      <td>Backend development, database design</td>
+    </tr>
+    <tr>
+      <td>Kai Huang</td>
+      <td>2022213674</td>
+      <td>221170652</td>
+      <td>Designed main UI and classifiedmanagement interface</td>
+    </tr>
+    <tr>
+      <td>Emma Zhao</td>
+      <td>20210004</td>
+      <td>210000004</td>
+      <td>Documentation, presentation</td>
+    </tr>
+    <tr>
+      <td>Jason Chen</td>
+      <td>20210005</td>
+      <td>210000005</td>
+      <td>UI/UX design, frontend support</td>
+    </tr>
+    <tr>
+      <td>Sophia Liu</td>
+      <td>20210006</td>
+      <td>210000006</td>
+      <td>Project coordination, quality assurance</td>
+    </tr>
+  </tbody>
+</table>
+
 
