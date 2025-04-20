@@ -116,10 +116,10 @@ src/
   </thead>
   <tbody>
     <tr>
-      <td>Alex Zhang</td>
-      <td>20210001</td>
-      <td>210000001</td>
-      <td>Project planning, frontend development</td>
+      <td>Linchuan Lu</td>
+      <td>2022213680</td>
+      <td>221170489</td>
+      <td>Deploy Deepseek api, implement csv-to-json format conversion, moddify AI conversation ui and api-setting ui.</td>
     </tr>
     <tr>
       <td>Linda Li</td>
