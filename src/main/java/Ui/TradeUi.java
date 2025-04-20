@@ -4,7 +4,9 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
@@ -17,6 +19,8 @@ import utils.JsonUtils;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+
+import static Ui.DashBoardUi.createInfoCard;
 
 public class TradeUi extends NavigationSuper {
     private BorderPane root;
@@ -33,12 +37,59 @@ public class TradeUi extends NavigationSuper {
     @Override
     public void start(Stage stage) {
         root = new BorderPane();
-        root.setLeft(createSidebar());
-        root.setCenter(createTradeManagementPage());
+        root.setLeft(createSidebar()); // Sidebar for navigation
+        root.setCenter(createDashboardPane()); // Default page (Dashboard)
+
         Scene scene = new Scene(root, 1200, 700);
         stage.setScene(scene);
-        stage.setTitle("Transaction Management");
+        stage.setTitle("Financial Dashboard");
         stage.show();
+    }
+
+
+    public VBox createDashboardPane() {
+        HBox summaryBox = new HBox(20);
+        summaryBox.setPadding(new Insets(20));
+        summaryBox.setAlignment(Pos.CENTER);
+        summaryBox.getChildren().addAll(
+                createInfoCard("Total Assets", "$120,500", "#cce5ff", "#004085"),
+                createInfoCard("Monthly Expense", "$5,200", "#f8d7da", "#721c24"),
+                createInfoCard("Monthly Income", "$7,300", "#d4edda", "#155724"),
+                createInfoCard("Savings Goal Progress", "56%", "#fff3cd", "#856404")
+        );
+
+        // Bar Chart
+        CategoryAxis xAxis = new CategoryAxis();
+        NumberAxis yAxis = new NumberAxis();
+        BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
+        barChart.setTitle("Recent Transactions");
+        xAxis.setLabel("Category");
+        yAxis.setLabel("Amount");
+
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.setName("Recent Transactions");
+        series.getData().add(new XYChart.Data<>("Rent", 1100));
+        series.getData().add(new XYChart.Data<>("Groceries", 750));
+        series.getData().add(new XYChart.Data<>("Utilities", 400));
+        series.getData().add(new XYChart.Data<>("Transport", 300));
+        series.getData().add(new XYChart.Data<>("Misc", 500));
+        barChart.getData().add(series);
+
+        // Pie Chart
+        PieChart pieChart = new PieChart();
+        pieChart.setTitle("Spending by Category");
+        pieChart.getData().addAll(
+                new PieChart.Data("Rent", 35),
+                new PieChart.Data("Groceries", 25),
+                new PieChart.Data("Utilities", 10),
+                new PieChart.Data("Transport", 10),
+                new PieChart.Data("Misc", 20)
+        );
+
+        HBox chartsBox = new HBox(20, barChart, pieChart);
+        chartsBox.setPadding(new Insets(20));
+        chartsBox.setAlignment(Pos.CENTER);
+        return new VBox(summaryBox, chartsBox);
     }
 
     public static VBox createTradeManagementPage() {
@@ -46,9 +97,9 @@ public class TradeUi extends NavigationSuper {
         mainContent.setPadding(new Insets(20));
         mainContent.setSpacing(20);
 
-        // Add Transaction Section
-        VBox addTransactionContainer = new VBox(5);
-        addTransactionContainer.setPadding(new Insets(10));
+        // 第一个容器：Add Transaction Manually
+        VBox addTransactionContainer = new VBox(5); // 减小Spacing，压缩容器
+        addTransactionContainer.setPadding(new Insets(10)); // 减小Padding，压缩容器
         addTransactionContainer.setStyle("-fx-background-color: #f0f0f0; -fx-border-radius: 5;");
         Label addTransactionLabel = new Label("Add Transaction Manually");
         addTransactionLabel.setFont(new Font(18));
@@ -78,6 +129,49 @@ public class TradeUi extends NavigationSuper {
         remarksField.setPromptText("Remarks");
         Button addButton = new Button("Add Transaction");
         addButton.setStyle("-fx-background-color: blue; -fx-text-fill: white;");
+
+        // Add transaction form fields to container
+        addTransactionContainer.getChildren().addAll(
+                addTransactionLabel, dateField, counterpartyField, itemField,
+                amountField, paymentMethodField,
+                statusField, transactionIdField, merchantIdField, remarksField, addButton
+        );
+
+        // Transaction List Section
+        VBox transactionListContainer = new VBox(15);
+        transactionListContainer.setPadding(new Insets(20));
+        Label transactionListLabel = new Label("Transaction List");
+        transactionListLabel.setFont(new Font(18));
+        transactionListLabel.setStyle("-fx-font-weight: bold;");
+        TextField searchField = new TextField("Search transactions...");
+        Button searchButton = new Button("Search");
+        TableView<Transaction> transactionTable = new TableView<>();
+
+        // Columns for all properties in Transaction class
+        TableColumn<Transaction, String> dateColumn = new TableColumn<>("Transaction Date");
+        TableColumn<Transaction, String> typeColumn = new TableColumn<>("Transaction Type");
+        TableColumn<Transaction, String> counterpartyColumn = new TableColumn<>("Counterparty");
+        TableColumn<Transaction, String> itemColumn = new TableColumn<>("Item");
+        TableColumn<Transaction, String> incExpColumn = new TableColumn<>("Income/Expense");
+        TableColumn<Transaction, String> amountColumn = new TableColumn<>("Amount");
+        TableColumn<Transaction, String> paymentMethodColumn = new TableColumn<>("Payment Method");
+        TableColumn<Transaction, String> statusColumn = new TableColumn<>("Status");
+        TableColumn<Transaction, String> transactionIdColumn = new TableColumn<>("Transaction ID");
+        TableColumn<Transaction, String> merchantIdColumn = new TableColumn<>("Merchant ID");
+        TableColumn<Transaction, String> remarksColumn = new TableColumn<>("Remarks");
+
+        // Set up cell value factories for all columns
+        dateColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getTransactionTime()));
+        typeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getTransactionType()));
+        counterpartyColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getCounterparty()));
+        itemColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getItem()));
+        incExpColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getIncExp()));
+        amountColumn.setCellValueFactory(cellData -> new SimpleStringProperty(String.valueOf(cellData.getValue().getAmount())));
+        paymentMethodColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getPaymentMethod()));
+        statusColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getStatus()));
+        transactionIdColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getTransactionId()));
+        merchantIdColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getMerchantId()));
+        remarksColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getNote()));
 
         // Add transaction form fields to container
         addTransactionContainer.getChildren().addAll(
