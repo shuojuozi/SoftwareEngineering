@@ -85,62 +85,8 @@ public class TradeUi extends NavigationSuper {
                 amountField, paymentMethodField,
                 statusField, transactionIdField, merchantIdField, remarksField, addButton
         );
-
-        // Transaction List Section
-        VBox transactionListContainer = new VBox(15);
-        transactionListContainer.setPadding(new Insets(20));
-        Label transactionListLabel = new Label("Transaction List");
-        transactionListLabel.setFont(new Font(18));
-        transactionListLabel.setStyle("-fx-font-weight: bold;");
-        TextField searchField = new TextField("Search transactions...");
-        Button searchButton = new Button("Search");
-        TableView<Transaction> transactionTable = new TableView<>();
-
-        // Columns for all properties in Transaction class
-        TableColumn<Transaction, String> dateColumn = new TableColumn<>("Transaction Date");
-        TableColumn<Transaction, String> typeColumn = new TableColumn<>("Transaction Type");
-        TableColumn<Transaction, String> counterpartyColumn = new TableColumn<>("Counterparty");
-        TableColumn<Transaction, String> itemColumn = new TableColumn<>("Item");
-        TableColumn<Transaction, String> incExpColumn = new TableColumn<>("Income/Expense");
-        TableColumn<Transaction, String> amountColumn = new TableColumn<>("Amount");
-        TableColumn<Transaction, String> paymentMethodColumn = new TableColumn<>("Payment Method");
-        TableColumn<Transaction, String> statusColumn = new TableColumn<>("Status");
-        TableColumn<Transaction, String> transactionIdColumn = new TableColumn<>("Transaction ID");
-        TableColumn<Transaction, String> merchantIdColumn = new TableColumn<>("Merchant ID");
-        TableColumn<Transaction, String> remarksColumn = new TableColumn<>("Remarks");
-
-        // Set up cell value factories for all columns
-        dateColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getTransactionTime()));
-        typeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getTransactionType()));
-        counterpartyColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getCounterparty()));
-        itemColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getItem()));
-        incExpColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getIncExp()));
-        amountColumn.setCellValueFactory(cellData -> new SimpleStringProperty(String.valueOf(cellData.getValue().getAmount())));
-        paymentMethodColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getPaymentMethod()));
-        statusColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getStatus()));
-        transactionIdColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getTransactionId()));
-        merchantIdColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getMerchantId()));
-        remarksColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getNote()));
-
-        // Add columns to table
-        transactionTable.getColumns().addAll(
-                dateColumn, typeColumn, counterpartyColumn, itemColumn,
-                incExpColumn, amountColumn, paymentMethodColumn, statusColumn,
-                transactionIdColumn, merchantIdColumn, remarksColumn
-        );
-
-        List<Transaction> transactions = JsonUtils.readTransactionsFromClasspath("transactionData.json");
-        transactionData.addAll(transactions);
-
-        // Set table items
-        transactionTable.setItems(transactionData);
-        transactionTable.setMaxHeight(350);
-
-        // Add search and table to the transaction list container
-        transactionListContainer.getChildren().addAll(transactionListLabel, searchField, searchButton, transactionTable);
-
-        // Add both sections to the main content
-        mainContent.getChildren().addAll(addTransactionContainer, transactionListContainer);
+        HBox transactionListPage = TradeListUi.createTradeButton();
+        mainContent.getChildren().addAll(addTransactionContainer, transactionListPage);
 
         // Add functionality for the "Add Transaction" button
         addButton.setOnAction(e -> {
@@ -152,13 +98,25 @@ public class TradeUi extends NavigationSuper {
                     showAlert("Please use valid amount!");
                     return;
                 }
-                String counterpartyText = counterpartyField.getText();
-                String amountText = amountField.getText();
-                String paymentMethodText = paymentMethodField.getText();
-                String statusText = statusField.getText();
-                String transactionIdText = transactionIdField.getText();
-                String merchantIdText = merchantIdField.getText();
-                String remarksText = remarksField.getText();
+                // 确保转换所有需要的字段为 UTF-8 编码
+                String counterpartyText = null;
+                String amountText = null;
+                String paymentMethodText = null;
+                String statusText = null;
+                String transactionIdText = null;
+                String merchantIdText = null;
+                String remarksText = null;
+                try {
+                    counterpartyText = new String(counterpartyField.getText().getBytes("GBK"), "UTF-8");
+                    amountText = new String(amountField.getText().getBytes("GBK"), "UTF-8");
+                    paymentMethodText = new String(paymentMethodField.getText().getBytes("GBK"), "UTF-8");
+                    statusText = new String(statusField.getText().getBytes("GBK"), "UTF-8");
+                    transactionIdText = new String(transactionIdField.getText().getBytes("GBK"), "UTF-8");
+                    merchantIdText = new String(merchantIdField.getText().getBytes("GBK"), "UTF-8");
+                    remarksText = new String(remarksField.getText().getBytes("GBK"), "UTF-8");
+                } catch (Exception exception) {
+                    exception.printStackTrace();
+                }
                 // 使用转换后的文本来构建 Transaction 对象
                 Transaction newTransaction = new Transaction(
                         dateField.getText(), // 假设日期字段是 UTF-8 编码的
@@ -174,8 +132,8 @@ public class TradeUi extends NavigationSuper {
                         remarksText // 使用转换后的文本
                 );
 
-
-//                transactionData.add(newTransaction); // Add new transaction to ObservableList
+                //transactionData.add(newTransaction);
+                // Add new transaction to ObservableList
                 try {
                     storeTransactionsInMemory(newTransaction);
                     transactionData.clear();
@@ -191,6 +149,8 @@ public class TradeUi extends NavigationSuper {
                 showAlert("Please fill in all fields.");
             }
         });
+
+
 
         return mainContent;
     }
@@ -271,4 +231,6 @@ public class TradeUi extends NavigationSuper {
         alert.setContentText(message);
         alert.showAndWait();
     }
+
 }
+
