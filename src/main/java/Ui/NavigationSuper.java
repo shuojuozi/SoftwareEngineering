@@ -14,13 +14,13 @@ public class NavigationSuper extends Application {
         // Initialize the root layout
         root = new BorderPane();
         root.setLeft(createSidebar());
-
+        root.setCenter(DashBoardUi.createDashboardPane());
     }
     @Override
     public void start(Stage stage) {
         root = new BorderPane();
         root.setLeft(createSidebar()); // Sidebar for navigation
-
+        root.setCenter(DashBoardUi.createDashboardPane());
         Scene scene = new Scene(root, 1200, 700);
         stage.setScene(scene);
         stage.setTitle("Financial Dashboard");

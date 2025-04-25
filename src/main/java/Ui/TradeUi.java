@@ -4,7 +4,9 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
@@ -17,6 +19,8 @@ import utils.JsonUtils;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+
+import static Ui.DashBoardUi.createInfoCard;
 
 public class TradeUi extends NavigationSuper {
     private BorderPane root;
@@ -33,12 +37,59 @@ public class TradeUi extends NavigationSuper {
     @Override
     public void start(Stage stage) {
         root = new BorderPane();
-        root.setLeft(createSidebar());
-        root.setCenter(createTradeManagementPage());
+        root.setLeft(createSidebar()); // Sidebar for navigation
+        root.setCenter(createDashboardPane()); // Default page (Dashboard)
+
         Scene scene = new Scene(root, 1200, 700);
         stage.setScene(scene);
-        stage.setTitle("Transaction Management");
+        stage.setTitle("Financial Dashboard");
         stage.show();
+    }
+
+
+    public VBox createDashboardPane() {
+        HBox summaryBox = new HBox(20);
+        summaryBox.setPadding(new Insets(20));
+        summaryBox.setAlignment(Pos.CENTER);
+        summaryBox.getChildren().addAll(
+                createInfoCard("Total Assets", "$120,500", "#cce5ff", "#004085"),
+                createInfoCard("Monthly Expense", "$5,200", "#f8d7da", "#721c24"),
+                createInfoCard("Monthly Income", "$7,300", "#d4edda", "#155724"),
+                createInfoCard("Savings Goal Progress", "56%", "#fff3cd", "#856404")
+        );
+
+        // Bar Chart
+        CategoryAxis xAxis = new CategoryAxis();
+        NumberAxis yAxis = new NumberAxis();
+        BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
+        barChart.setTitle("Recent Transactions");
+        xAxis.setLabel("Category");
+        yAxis.setLabel("Amount");
+
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.setName("Recent Transactions");
+        series.getData().add(new XYChart.Data<>("Rent", 1100));
+        series.getData().add(new XYChart.Data<>("Groceries", 750));
+        series.getData().add(new XYChart.Data<>("Utilities", 400));
+        series.getData().add(new XYChart.Data<>("Transport", 300));
+        series.getData().add(new XYChart.Data<>("Misc", 500));
+        barChart.getData().add(series);
+
+        // Pie Chart
+        PieChart pieChart = new PieChart();
+        pieChart.setTitle("Spending by Category");
+        pieChart.getData().addAll(
+                new PieChart.Data("Rent", 35),
+                new PieChart.Data("Groceries", 25),
+                new PieChart.Data("Utilities", 10),
+                new PieChart.Data("Transport", 10),
+                new PieChart.Data("Misc", 20)
+        );
+
+        HBox chartsBox = new HBox(20, barChart, pieChart);
+        chartsBox.setPadding(new Insets(20));
+        chartsBox.setAlignment(Pos.CENTER);
+        return new VBox(summaryBox, chartsBox);
     }
 
     public static VBox createTradeManagementPage() {
@@ -46,9 +97,9 @@ public class TradeUi extends NavigationSuper {
         mainContent.setPadding(new Insets(20));
         mainContent.setSpacing(20);
 
-        // Add Transaction Section
-        VBox addTransactionContainer = new VBox(5);
-        addTransactionContainer.setPadding(new Insets(10));
+        // 第一个容器：Add Transaction Manually
+        VBox addTransactionContainer = new VBox(5); // 减小Spacing，压缩容器
+        addTransactionContainer.setPadding(new Insets(10)); // 减小Padding，压缩容器
         addTransactionContainer.setStyle("-fx-background-color: #f0f0f0; -fx-border-radius: 5;");
         Label addTransactionLabel = new Label("Add Transaction Manually");
         addTransactionLabel.setFont(new Font(18));
@@ -80,11 +131,11 @@ public class TradeUi extends NavigationSuper {
         addButton.setStyle("-fx-background-color: blue; -fx-text-fill: white;");
 
         // Add transaction form fields to container
-        addTransactionContainer.getChildren().addAll(
-                addTransactionLabel, dateField, counterpartyField, itemField,
-                amountField, paymentMethodField,
-                statusField, transactionIdField, merchantIdField, remarksField, addButton
-        );
+//        addTransactionContainer.getChildren().addAll(
+//                addTransactionLabel, dateField, counterpartyField, itemField,
+//                amountField, paymentMethodField,
+//                statusField, transactionIdField, merchantIdField, remarksField, addButton
+//        );
 
         // Transaction List Section
         VBox transactionListContainer = new VBox(15);
@@ -122,25 +173,14 @@ public class TradeUi extends NavigationSuper {
         merchantIdColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getMerchantId()));
         remarksColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getNote()));
 
-        // Add columns to table
-        transactionTable.getColumns().addAll(
-                dateColumn, typeColumn, counterpartyColumn, itemColumn,
-                incExpColumn, amountColumn, paymentMethodColumn, statusColumn,
-                transactionIdColumn, merchantIdColumn, remarksColumn
+        // Add transaction form fields to container
+        addTransactionContainer.getChildren().addAll(
+                addTransactionLabel, dateField, counterpartyField, itemField,
+                amountField, paymentMethodField,
+                statusField, transactionIdField, merchantIdField, remarksField, addButton
         );
-
-        List<Transaction> transactions = JsonUtils.readTransactionsFromClasspath("transactionData.json");
-        transactionData.addAll(transactions);
-
-        // Set table items
-        transactionTable.setItems(transactionData);
-        transactionTable.setMaxHeight(350);
-
-        // Add search and table to the transaction list container
-        transactionListContainer.getChildren().addAll(transactionListLabel, searchField, searchButton, transactionTable);
-
-        // Add both sections to the main content
-        mainContent.getChildren().addAll(addTransactionContainer, transactionListContainer);
+        HBox transactionListPage = TradeListUi.createTradeButton();
+        mainContent.getChildren().addAll(addTransactionContainer, transactionListPage);
 
         // Add functionality for the "Add Transaction" button
         addButton.setOnAction(e -> {
@@ -152,13 +192,25 @@ public class TradeUi extends NavigationSuper {
                     showAlert("Please use valid amount!");
                     return;
                 }
-                String counterpartyText = counterpartyField.getText();
-                String amountText = amountField.getText();
-                String paymentMethodText = paymentMethodField.getText();
-                String statusText = statusField.getText();
-                String transactionIdText = transactionIdField.getText();
-                String merchantIdText = merchantIdField.getText();
-                String remarksText = remarksField.getText();
+                // 确保转换所有需要的字段为 UTF-8 编码
+                String counterpartyText = null;
+                String amountText = null;
+                String paymentMethodText = null;
+                String statusText = null;
+                String transactionIdText = null;
+                String merchantIdText = null;
+                String remarksText = null;
+                try {
+                    counterpartyText = new String(counterpartyField.getText().getBytes("GBK"), "UTF-8");
+                    amountText = new String(amountField.getText().getBytes("GBK"), "UTF-8");
+                    paymentMethodText = new String(paymentMethodField.getText().getBytes("GBK"), "UTF-8");
+                    statusText = new String(statusField.getText().getBytes("GBK"), "UTF-8");
+                    transactionIdText = new String(transactionIdField.getText().getBytes("GBK"), "UTF-8");
+                    merchantIdText = new String(merchantIdField.getText().getBytes("GBK"), "UTF-8");
+                    remarksText = new String(remarksField.getText().getBytes("GBK"), "UTF-8");
+                } catch (Exception exception) {
+                    exception.printStackTrace();
+                }
                 // 使用转换后的文本来构建 Transaction 对象
                 Transaction newTransaction = new Transaction(
                         dateField.getText(), // 假设日期字段是 UTF-8 编码的
@@ -174,8 +226,8 @@ public class TradeUi extends NavigationSuper {
                         remarksText // 使用转换后的文本
                 );
 
-
-//                transactionData.add(newTransaction); // Add new transaction to ObservableList
+                //transactionData.add(newTransaction);
+                // Add new transaction to ObservableList
                 try {
                     storeTransactionsInMemory(newTransaction);
                     transactionData.clear();
@@ -191,6 +243,7 @@ public class TradeUi extends NavigationSuper {
                 showAlert("Please fill in all fields.");
             }
         });
+
 
         return mainContent;
     }
