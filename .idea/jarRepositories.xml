@@ -16,5 +16,10 @@
       <option name="name" value="JBoss Community repository" />
       <option name="url" value="https://repository.jboss.org/nexus/content/repositories/public/" />
     </remote-repository>
+    <remote-repository>
+      <option name="id" value="itext" />
+      <option name="name" value="itext" />
+      <option name="url" value="https://repo.itextpdf.com/maven2/" />
+    </remote-repository>
   </component>
 </project>

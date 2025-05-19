@@ -88,6 +88,34 @@ public class TradeListUi extends NavigationSuper {
         transactionTable.setItems(transactionData);
         transactionTable.setMaxHeight(350);
 
+        // Handle search functionality
+        searchButton.setOnAction(e -> {
+            String transactionId = searchField.getText().trim();
+            if (!transactionId.isEmpty()) {
+                // 查找与输入ID匹配的交易
+                Optional<Transaction> transactionOpt = transactionData.stream()
+                        .filter(t -> t.getTransactionId().equals(transactionId))
+                        .findFirst();
+
+                if (transactionOpt.isPresent()) {
+                    // 如果找到匹配的交易，展示交易详情界面
+                    TransactionUi transactionUi = new TransactionUi(transactionOpt.get());
+                    Stage detailsStage = new Stage();
+                    Scene transactionScene = new Scene(transactionUi.createTransactionDetailsPage(), 800, 600);
+                    detailsStage.setScene(transactionScene);
+                    detailsStage.setTitle("Transaction Details");
+                    detailsStage.show();
+                } else {
+                    // 如果没有找到交易，弹出错误提示框
+                    Alert alert = new Alert(AlertType.ERROR);
+                    alert.setTitle("Transaction Not Found");
+                    alert.setHeaderText(null);
+                    alert.setContentText("No transaction found with the ID: " + transactionId);
+                    alert.showAndWait();
+                }
+            }
+        });
+
         // Add search and table to the transaction list container
         transactionListContainer.getChildren().addAll(transactionListLabel, searchField, searchButton, transactionTable);
 
@@ -96,6 +124,7 @@ public class TradeListUi extends NavigationSuper {
 
         return mainContent;
     }
+
 
     public static HBox createTradeButton() {
         // 创建用于水平排列按钮的主容器
@@ -148,22 +177,19 @@ public class TradeListUi extends NavigationSuper {
     }
 
     private static void handleViewDetailsAction() {
-        // Create a new stage (window) to show the transaction details
+        // 创建一个新窗口
         Stage detailsStage = new Stage();
 
-        // Create the Transaction List UI with freshly loaded data
-        VBox transactionListPage = TradeListUi.createTransactionListPage();
+        // 调用createTransactionListPage方法，获取交易列表页面
+        VBox transactionListPage = createTransactionListPage();
 
-        // Set the scene for the new stage
-        Scene scene = new Scene(transactionListPage, 800, 600);  // Set the size of the new window
-        detailsStage.setScene(scene);
-
-        // Set the title for the new window
-        detailsStage.setTitle("Transaction Details");
-
-        // Show the new window
+        // 设置新窗口的场景
+        Scene transactionListScene = new Scene(transactionListPage, 800, 600);
+        detailsStage.setScene(transactionListScene);
+        detailsStage.setTitle("Transaction List");
         detailsStage.show();
     }
+
 
     private static void handleAutoImportAction() {
         // 创建一个文本输入对话框让用户输入文件路径

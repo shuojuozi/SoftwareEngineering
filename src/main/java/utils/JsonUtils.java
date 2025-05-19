@@ -2,6 +2,7 @@ package utils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import javafx.scene.chart.XYChart;
 import pojo.Transaction;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,10 +14,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class JsonUtils {
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -182,6 +186,7 @@ public class JsonUtils {
      */
     public static void parseCsv2Json(String csvFilePath) throws IOException, InterruptedException {
         List<Transaction> transactions = parseCsvToTransactions(csvFilePath);
+        System.out.println(transactions);
 
         // 如果已有data.json文件，则追加进去
         if (Files.exists(Paths.get(DATA_JSON_PATH))) {
@@ -228,7 +233,7 @@ public class JsonUtils {
     public static List<Transaction> parseCsvToTransactions(String csvFilePath) {
         List<Transaction> transactions = new ArrayList<>();
 
-        try (BufferedReader br = new BufferedReader(new FileReader(csvFilePath))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(csvFilePath), StandardCharsets.UTF_8))) {
             String line;
             boolean startParse = false; // 用于标记是否开始真正解析交易数据
 
@@ -238,6 +243,8 @@ public class JsonUtils {
                 if (line.isEmpty()) {
                     continue;
                 }
+
+                System.out.println(line);
 
                 // 根据逗号切分
                 String[] cols = line.split(",", -1);
@@ -313,6 +320,8 @@ public class JsonUtils {
             e.printStackTrace();
         }
 
+        System.out.println(transactions);
+
         return transactions;
     }
 
@@ -327,8 +336,7 @@ public class JsonUtils {
         // 让输出格式更加美观
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
 
-        try (OutputStreamWriter writer = new OutputStreamWriter(
-                new FileOutputStream(outputJson), StandardCharsets.UTF_8)) {
+        try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(outputJson), StandardCharsets.UTF_8)) {
             mapper.writeValue(writer, transactions);
             System.out.println("成功处理 " + transactions.size() + " 条交易记录，已输出到 " + outputJson);
         } catch (IOException e) {
@@ -461,4 +469,69 @@ public class JsonUtils {
                 })
                 .collect(Collectors.toList());
     }
+    /*public static double getExpensesOfRecentMonth(int year, int month, int date) {
+        List<Transaction> transactions = readTransactionsFromClasspath("transactionData.json");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        double expense = 0;
+        List<Transaction> a = transactions.stream()
+                .filter(t -> {
+                    try {
+                        LocalDateTime dateTime = LocalDateTime.parse(t.getTransactionTime(), formatter);
+                        // 同时验证日期和交易类型
+                        return dateTime.getYear() == year && dateTime.getMonthValue() == month
+                                && dateTime.getDayOfMonth() == date; // 新增类型判断
+                    } catch (Exception e) {
+                        System.err.println("日期格式错误: " + t.getTransactionTime());
+                        return false;
+                    }
+                })
+                .collect(Collectors.toList());
+        for (Transaction transaction : a) {
+            expense +=  transaction.getAmount();
+        }
+
+        return expense;
+    }*/
+    public static Map<Integer, Double> getDailyExpensesForMonth(int year, int month) {
+        List<Transaction> transactions = readTransactionsFromClasspath("transactionData.json");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        return transactions.stream()
+                .filter(t -> {
+                    try {
+                        // 1. 解析交易时间
+                        LocalDateTime dateTime = LocalDateTime.parse(t.getTransactionTime(), formatter);
+
+                        // 2. 验证是否匹配年月且是支出
+                        boolean isMatch = dateTime.getYear() == year
+                                && dateTime.getMonthValue() == month
+                                && "\"支出\"".equals(t.getIncExp());
+
+                        // 调试输出（可选）
+                        if (isMatch) {
+                            int combined = dateTime.getYear() * 10000
+                                    + dateTime.getMonthValue() * 100
+                                    + dateTime.getDayOfMonth();
+                            System.out.println("匹配到交易日期: " + combined);
+                        }
+
+                        return isMatch;
+                    } catch (Exception e) {
+                        System.err.println("日期格式错误: " + t.getTransactionTime());
+                        return false;
+                    }
+                })
+                // 3. 按日期（yyyyMMdd 整数）分组并求和金额
+                .collect(Collectors.groupingBy(
+                        t -> {
+                            LocalDateTime dateTime = LocalDateTime.parse(t.getTransactionTime(), formatter);
+                            return dateTime.getYear() * 10000
+                                    + dateTime.getMonthValue() * 100
+                                    + dateTime.getDayOfMonth();
+                        },
+                        Collectors.summingDouble(Transaction::getAmount)
+                ));
+    }
+
+
 }

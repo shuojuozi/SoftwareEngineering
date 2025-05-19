@@ -38,58 +38,12 @@ public class TradeUi extends NavigationSuper {
     public void start(Stage stage) {
         root = new BorderPane();
         root.setLeft(createSidebar()); // Sidebar for navigation
-        root.setCenter(createDashboardPane()); // Default page (Dashboard)
+        root.setCenter(createTradeManagementPage()); // Default page (Dashboard)
 
         Scene scene = new Scene(root, 1200, 700);
         stage.setScene(scene);
         stage.setTitle("Financial Dashboard");
         stage.show();
-    }
-
-
-    public VBox createDashboardPane() {
-        HBox summaryBox = new HBox(20);
-        summaryBox.setPadding(new Insets(20));
-        summaryBox.setAlignment(Pos.CENTER);
-        summaryBox.getChildren().addAll(
-                createInfoCard("Total Assets", "$120,500", "#cce5ff", "#004085"),
-                createInfoCard("Monthly Expense", "$5,200", "#f8d7da", "#721c24"),
-                createInfoCard("Monthly Income", "$7,300", "#d4edda", "#155724"),
-                createInfoCard("Savings Goal Progress", "56%", "#fff3cd", "#856404")
-        );
-
-        // Bar Chart
-        CategoryAxis xAxis = new CategoryAxis();
-        NumberAxis yAxis = new NumberAxis();
-        BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
-        barChart.setTitle("Recent Transactions");
-        xAxis.setLabel("Category");
-        yAxis.setLabel("Amount");
-
-        XYChart.Series<String, Number> series = new XYChart.Series<>();
-        series.setName("Recent Transactions");
-        series.getData().add(new XYChart.Data<>("Rent", 1100));
-        series.getData().add(new XYChart.Data<>("Groceries", 750));
-        series.getData().add(new XYChart.Data<>("Utilities", 400));
-        series.getData().add(new XYChart.Data<>("Transport", 300));
-        series.getData().add(new XYChart.Data<>("Misc", 500));
-        barChart.getData().add(series);
-
-        // Pie Chart
-        PieChart pieChart = new PieChart();
-        pieChart.setTitle("Spending by Category");
-        pieChart.getData().addAll(
-                new PieChart.Data("Rent", 35),
-                new PieChart.Data("Groceries", 25),
-                new PieChart.Data("Utilities", 10),
-                new PieChart.Data("Transport", 10),
-                new PieChart.Data("Misc", 20)
-        );
-
-        HBox chartsBox = new HBox(20, barChart, pieChart);
-        chartsBox.setPadding(new Insets(20));
-        chartsBox.setAlignment(Pos.CENTER);
-        return new VBox(summaryBox, chartsBox);
     }
 
     public static VBox createTradeManagementPage() {
@@ -131,11 +85,11 @@ public class TradeUi extends NavigationSuper {
         addButton.setStyle("-fx-background-color: blue; -fx-text-fill: white;");
 
         // Add transaction form fields to container
-        addTransactionContainer.getChildren().addAll(
-                addTransactionLabel, dateField, counterpartyField, itemField,
-                amountField, paymentMethodField,
-                statusField, transactionIdField, merchantIdField, remarksField, addButton
-        );
+//        addTransactionContainer.getChildren().addAll(
+//                addTransactionLabel, dateField, counterpartyField, itemField,
+//                amountField, paymentMethodField,
+//                statusField, transactionIdField, merchantIdField, remarksField, addButton
+//        );
 
         // Transaction List Section
         VBox transactionListContainer = new VBox(15);

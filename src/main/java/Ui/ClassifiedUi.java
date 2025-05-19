@@ -38,7 +38,7 @@ public class ClassifiedUi extends NavigationSuper {
     public static VBox createDashboardPane() {
 
         // 1. 获取30天的消费数据
-        List<Transaction> transactions = JsonUtils.getTransactionsByMonth(2025, 2); // 修改为2025年4月
+        List<Transaction> transactions = JsonUtils.getTransactionsByMonth(UserUi.year,  UserUi.month); // 修改为2025年4月
 
         double housing = 0;
         double transport = 0;

@@ -7,6 +7,8 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
+import static Ui.TradeListUi.*;
+
 public class NavigationSuper extends Application {
     public static BorderPane root;
 
@@ -14,13 +16,13 @@ public class NavigationSuper extends Application {
         // Initialize the root layout
         root = new BorderPane();
         root.setLeft(createSidebar());
-
+        root.setCenter(DashBoardUi.createDashboardPane());
     }
     @Override
     public void start(Stage stage) {
         root = new BorderPane();
         root.setLeft(createSidebar()); // Sidebar for navigation
-
+        root.setCenter(DashBoardUi.createDashboardPane());
         Scene scene = new Scene(root, 1200, 700);
         stage.setScene(scene);
         stage.setTitle("Financial Dashboard");
@@ -36,12 +38,13 @@ public class NavigationSuper extends Application {
         // Labels for different pages
         box.getChildren().addAll(
                 createSidebarLabel("📊 Dashboard", e -> root.setCenter(DashBoardUi.createDashboardPane())),
-                createSidebarLabel("Trade management", e -> root.setCenter(TradeUi.createTradeManagementPage())),
-                createSidebarLabel("Transaction details", e -> root.setCenter(TransactionUi.createTransactionDetailPage())),
-                createSidebarLabel("Classified management of expenditure", e -> root.setCenter(ClassifiedUi.createDashboardPane())),
-                createSidebarLabel("Budgeting and savings goals", e -> root.setCenter(BudgetUi.createDashboardPane())),
-                createSidebarLabel("Analysis and report", e -> root.setCenter(AnalysisUi.createDashboardPane()))
+                createSidebarLabel("💼 Trade management", e -> root.setCenter(TradeUi.createTradeManagementPage())),
+                createSidebarLabel("📑 Classified management of expenditure", e -> root.setCenter(ClassifiedUi.createDashboardPane())),
+                createSidebarLabel("💰 Budgeting and savings goals", e -> root.setCenter(BudgetUi.createDashboardPane())),
+                createSidebarLabel("📈 Analysis and report", e -> root.setCenter(AnalysisUi.createDashboardPane())),
+                createSidebarLabel("⚙️ User Setting", e -> root.setCenter(UserUi.createDashboardPane()))
         );
+
 
         return box;
     }

@@ -11,10 +11,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.logging.Logger;
 
 public class DeepSeek {
@@ -100,9 +97,9 @@ public class DeepSeek {
             return null;
         }
         OkHttpClient client = new OkHttpClient().newBuilder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(60, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
+                .connectTimeout(90, TimeUnit.SECONDS)
+                .writeTimeout(90, TimeUnit.SECONDS)
+                .readTimeout(90, TimeUnit.SECONDS)
                 .build();
         MediaType mediaType = MediaType.parse("application/json");
 
@@ -166,29 +163,43 @@ public class DeepSeek {
      */
     public static void classifyBatchTransaction(String jsonPath) throws IOException, InterruptedException {
         List<String> ids = JsonUtils.getAllTransactionIds(jsonPath);
+        System.out.println("要处理的交易ID数量: " + ids.size());
 
-        System.out.println(ids);
-
-        // 使用 CountDownLatch 来确保所有异步请求都完成后再关闭线程池
+        // 限制并发线程数，比如限制最多同时 5 个请求
+        Semaphore semaphore = new Semaphore(5);
         CountDownLatch latch = new CountDownLatch(ids.size());
 
         for (String id : ids) {
             executorService.submit(() -> {
                 try {
-                    String category = classifyTransaction(id);
+                    semaphore.acquire(); // 获取许可（控制并发数）
+
+                    boolean success = false;
+                    int attempts = 0;
+                    while (!success && attempts < 3) { // 最多重试 3 次
+                        attempts++;
+                        try {
+                            String category = classifyTransaction(id);
+                            System.out.println("交易ID: " + id + " 分类结果: " + category);
+                            success = true;
+                        } catch (Exception e) {
+                            System.err.println("交易ID: " + id + " 第 " + attempts + " 次分类失败: " + e.getMessage());
+                            Thread.sleep(1000); // 等待再重试
+                        }
+                    }
+
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                 } finally {
+                    semaphore.release();
                     latch.countDown();
                 }
             });
         }
 
-        System.out.println("Waiting for all tasks to finish...");
-        // 等待所有请求完成
+        System.out.println("等待所有任务完成...");
         latch.await();
-        System.out.println("All tasks completed.");
-
-
-//        executorService.shutdown();
+        System.out.println("全部任务已完成！");
     }
 
     /**
@@ -268,4 +279,5 @@ public class DeepSeek {
             return "调用失败：" + e.getMessage();
         }
     }
+
 }

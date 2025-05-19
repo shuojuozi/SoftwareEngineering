@@ -8,13 +8,21 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import lombok.Getter;
+import lombok.Setter;
 import pojo.Transaction;
 import utils.JsonUtils;
+import java.time.Year;
 import java.util.List;
 
-
 public class DashBoardUi extends NavigationSuper {
+
     private BorderPane root;
+    // 提供一个 setter 方法来更新 monthlyExpense
+    // 提供一个 getter 方法来获取动态更新的 monthlyExpense
+    @Setter
+    @Getter
+    private static double monthlyExpense = 0; // 每月消费的静态属性
 
     public DashBoardUi() {
         // Initialize the root layout
@@ -36,8 +44,8 @@ public class DashBoardUi extends NavigationSuper {
 
     public static VBox createDashboardPane() {
         // 1. 获取30天的消费数据
-        List<Transaction> transactions = JsonUtils.getTransactionsByMonth(2025, 2); // 修改为2025年4月
-
+        List<Transaction> transactions = JsonUtils.getTransactionsByMonth(UserUi.year, UserUi.month); // 修改为2025年4月
+        // 初始化各个类别的消费金额
         double housing = 0;
         double transport = 0;
         double dining = 0;
@@ -47,8 +55,8 @@ public class DashBoardUi extends NavigationSuper {
         double communication = 0;
         double investment = 0;
         double transfer = 0;
-
         double sum = 0;
+        // 2. 统计各类消费金额
         for (Transaction transaction : transactions) {
             sum += transaction.getAmount();
             String category = transaction.getTransactionType();
@@ -71,18 +79,18 @@ public class DashBoardUi extends NavigationSuper {
             } else if (category.equalsIgnoreCase("\"healthcareeducation and training\"")) {
                 health += transaction.getAmount();
             }
-
         }
+        // 3. 更新 monthlyExpense 为当月总消费金额
+        monthlyExpense = sum;  // 动态更新 monthlyExpense
 
 
-// 3. 计算总资产、每月消费和每月收入
-        double totalAssets = 10000; // 假设的总资产，需要自己输入
-        double monthlyExpense = sum;
-        double monthlyIncome = 2500; // 假设的每月收入，需要自己输入
-        double savingsGoal = 15000;// 假设的储蓄目标，需要自己输入
-        double savingsGoalProgress = (totalAssets + monthlyIncome - monthlyExpense)/savingsGoal; // 假设的储蓄目标进度，您可以根据需要进行动态计算
+        // 计算其他财务信息
+        double totalAssets = UserUi.totalAssets; // 假设的总资产，需要自己输入
+        double monthlyIncome = UserUi.monthlyIncome; // 假设的每月收入，需要自己输入
+        double savingsGoal = UserUi.savingsGoal; // 假设的储蓄目标，需要自己输入
+        double savingsGoalProgress = (totalAssets + monthlyIncome - monthlyExpense) / savingsGoal; // 假设的储蓄目标进度，您可以根据需要进行动态计算
 
-// 4. 创建汇总信息卡片
+        // 4. 创建汇总信息卡片
         HBox summaryBox = new HBox(20);
         summaryBox.setPadding(new Insets(20));
         summaryBox.setAlignment(Pos.CENTER);
@@ -94,19 +102,18 @@ public class DashBoardUi extends NavigationSuper {
                 createInfoCard("Savings Goal Progress", String.format("%.0f%%", savingsGoalProgress * 100), "#fff3cd", "#856404")
         );
 
-// 5. 创建 Bar Chart（使用从 summarizeByBillingCycle 获取的数据）
+        // 5. 创建 Bar Chart（使用从 summarizeByBillingCycle 获取的数据）
         CategoryAxis xAxis = new CategoryAxis();
         NumberAxis yAxis = new NumberAxis();
         BarChart<String, Number> barChart = new BarChart<>(xAxis, yAxis);
         barChart.setTitle("Recent Transactions");
         xAxis.setLabel("Category");
         yAxis.setLabel("Amount");
-
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         series.setName("Recent Transactions");
         series.getData().addAll(
                 new XYChart.Data<>("Housing", housing),
-                new XYChart.Data<>("Dinging", dining),
+                new XYChart.Data<>("Dining", dining),
                 new XYChart.Data<>("Entertainment", entertainment),
                 new XYChart.Data<>("Transport", transport),
                 new XYChart.Data<>("Shopping", shopping),
@@ -117,12 +124,12 @@ public class DashBoardUi extends NavigationSuper {
         );
         barChart.getData().add(series);
 
-// 6. 创建 Pie Chart
+        // 6. 创建 Pie Chart
         PieChart pieChart = new PieChart();
         pieChart.setTitle("Spending by Category");
         pieChart.getData().addAll(
                 new PieChart.Data("Rent", housing),
-                new PieChart.Data("Dinging", dining),
+                new PieChart.Data("Dining", dining),
                 new PieChart.Data("Entertainment", entertainment),
                 new PieChart.Data("Transport", transport),
                 new PieChart.Data("Shopping", shopping),
@@ -132,13 +139,11 @@ public class DashBoardUi extends NavigationSuper {
                 new PieChart.Data("Transfer", transfer)
         );
 
-// 7. 放置图表
+        // 7. 放置图表
         HBox chartsBox = new HBox(20, barChart, pieChart);
         chartsBox.setPadding(new Insets(20));
         chartsBox.setAlignment(Pos.CENTER);
-
         return new VBox(summaryBox, chartsBox);
-
     }
 
     public static VBox createInfoCard(String title, String value, String backgroundColor, String textColor) {
@@ -153,6 +158,5 @@ public class DashBoardUi extends NavigationSuper {
         infoCard.getChildren().addAll(titleLabel, valueLabel);
         return infoCard;
     }
-
 
 }
