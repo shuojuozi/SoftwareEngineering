@@ -131,9 +131,9 @@ src/
     </tr>
     <tr>
       <td>Yeming Ma</td>
-      <td>20210002</td>
-      <td>210000002</td>
-      <td>Backend development, database design</td>
+      <td>2022213673</td>
+      <td>221170490</td>
+      <td>Analyze the functional implementation of the interface and the interconnection between some interfaces and the corresponding functions.</td>
     </tr>
     <tr>
       <td>Kai Huang</td>
