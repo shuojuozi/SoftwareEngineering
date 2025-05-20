@@ -1,5 +1,6 @@
 package Ui;
 
+import Ui.NavigationSuper;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -10,10 +11,10 @@ import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import pojo.Transaction;
+import utils.DeepSeek;
 import utils.JsonUtils;
 
 import java.util.List;
-
 
 public class ClassifiedUi extends NavigationSuper {
     private BorderPane root;
@@ -35,11 +36,10 @@ public class ClassifiedUi extends NavigationSuper {
         stage.setTitle("Financial Dashboard");
         stage.show();
     }
-    public static VBox createDashboardPane() {
 
+    public static VBox createDashboardPane() {
         // 1. 获取30天的消费数据
         List<Transaction> transactions = JsonUtils.getTransactionsByMonth(UserUi.year,  UserUi.month); // 修改为2025年4月
-
         double housing = 0;
         double transport = 0;
         double dining = 0;
@@ -49,8 +49,8 @@ public class ClassifiedUi extends NavigationSuper {
         double communication = 0;
         double investment = 0;
         double transfer = 0;
-
         double sum = 0;
+
         for (Transaction transaction : transactions) {
             sum += transaction.getAmount();
             String category = transaction.getTransactionType();
@@ -73,7 +73,6 @@ public class ClassifiedUi extends NavigationSuper {
             } else if (category.equalsIgnoreCase("\"healthcareeducation and training\"")) {
                 health += transaction.getAmount();
             }
-
         }
 
         // 5. 创建 Bar Chart（使用从 summarizeByBillingCycle 获取的数据）
@@ -83,7 +82,6 @@ public class ClassifiedUi extends NavigationSuper {
         barChart.setTitle("Recent Transactions");
         xAxis.setLabel("Category");
         yAxis.setLabel("Amount");
-
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         series.setName("Recent Transactions");
         series.getData().addAll(
@@ -99,7 +97,7 @@ public class ClassifiedUi extends NavigationSuper {
         );
         barChart.getData().add(series);
 
-// 6. 创建 Pie Chart
+        // 6. 创建 Pie Chart
         PieChart pieChart = new PieChart();
         pieChart.setTitle("Spending by Category");
         pieChart.getData().addAll(
@@ -114,25 +112,42 @@ public class ClassifiedUi extends NavigationSuper {
                 new PieChart.Data("Transfer", transfer)
         );
 
-// 7. 放置图表
+        // 7. 放置图表
         HBox chartsBox = new HBox(20, barChart, pieChart);
         chartsBox.setPadding(new Insets(20));
         chartsBox.setAlignment(Pos.CENTER);
 
-        // Add Category button
-        Button addCategoryButton = new Button("Add Category");
-        addCategoryButton.setOnAction(event -> {
-            // Add your event handling code here
-            System.out.println("Add Category button clicked");
+        // 创建文本域用于显示AI输出
+        TextArea aiOutputTextArea = new TextArea();
+        aiOutputTextArea.setEditable(false);
+        aiOutputTextArea.setPrefHeight(100);  // 设置文本域的高度
+        aiOutputTextArea.setWrapText(true); // 允许换行
+        aiOutputTextArea.setStyle("-fx-background-color: #f1f8ff; -fx-font-size: 14px; -fx-text-fill: #333333;");
+
+        // 创建 AI Suggestion 按钮
+        Button aiSuggestionButton = new Button("AI Suggestion");
+        aiSuggestionButton.setStyle("-fx-background-color: #004085; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 8px 12px;");
+
+        // 添加按钮点击事件
+        aiSuggestionButton.setOnAction(event -> {
+            // 调用你的函数并传入年份和月份参数
+            String aiResponse = DeepSeek.budgetSuggestion(UserUi.year, UserUi.month);
+            aiOutputTextArea.setText(aiResponse); // 将AI的输出显示在文本域中
         });
 
-        VBox dashboardLayout = new VBox(chartsBox, addCategoryButton);
+        // 创建一个水平布局来容纳图标、按钮和文本域
+        HBox aiContainer = new HBox(20);
+        aiContainer.setAlignment(Pos.CENTER);
+        aiContainer.setPadding(new Insets(20));
+        aiContainer.getChildren().addAll(aiOutputTextArea, aiSuggestionButton);  // 将文本域和按钮添加到HBox中
+
+        // 设置主布局
+        VBox dashboardLayout = new VBox(chartsBox, aiContainer);
         dashboardLayout.setAlignment(Pos.CENTER);
-        dashboardLayout.setSpacing(20); // Add some spacing between elements
+        dashboardLayout.setSpacing(20); // 元素之间的间距
 
         return dashboardLayout;
     }
-
 
 
 }

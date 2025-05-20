@@ -29,6 +29,7 @@ import java.util.Map;
 
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfWriter;
+import utils.DeepSeek;
 
 import javax.imageio.ImageIO;
 
@@ -131,7 +132,6 @@ public class AnalysisUi extends NavigationSuper {
         scrollPane.setFitToHeight(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
         scrollPane.setStyle("-fx-padding: 10;");
-
         VBox chartContainer = new VBox(scrollPane);
         chartContainer.setPadding(new Insets(10));
         dashboardLayout.getChildren().add(chartContainer);
@@ -148,14 +148,21 @@ public class AnalysisUi extends NavigationSuper {
         buttonBox.setAlignment(Pos.CENTER);
         Button exportPDFButton = new Button("Export PDF");
         Button exportCSVButton = new Button("Export CSV");
+        Button aiAnalysisButton = new Button("AI Analysis");
 
         // 导出PDF按钮事件
         exportPDFButton.setOnAction(event -> exportPDF(lineChart));
-
         // 导出CSV按钮事件
         exportCSVButton.setOnAction(event -> exportCSV(expensesMap));
 
-        buttonBox.getChildren().addAll(exportPDFButton, exportCSVButton);
+        // AI分析按钮事件
+        aiAnalysisButton.setOnAction(event -> {
+            // 这里我们将触发AI分析
+            String aiSuggestion = DeepSeek.analyzeSpendingBehavior(UserUi.year, UserUi.month);
+            aiPredictionTextArea.setText(aiSuggestion); // 显示AI建议
+        });
+
+        buttonBox.getChildren().addAll(exportPDFButton, exportCSVButton, aiAnalysisButton);
         dashboardLayout.getChildren().add(buttonBox);
 
         return dashboardLayout;

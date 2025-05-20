@@ -2,13 +2,10 @@ package utils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import okhttp3.*;
 import pojo.Transaction;
 
 import java.io.IOException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -20,6 +17,13 @@ public class DeepSeek {
     private static final String API_URL = "https://api.deepseek.com/chat/completions";
     private static final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
+    // 重用OkHttpClient
+    private static final OkHttpClient client = new OkHttpClient().newBuilder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build();
+
     /**
      * 和DeepSeek进行对话
      *
@@ -27,13 +31,7 @@ public class DeepSeek {
      * @return DeepSeek的返回内容
      */
     public static String communicate(String userInput) {
-        OkHttpClient client = new OkHttpClient().newBuilder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(60, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .build();
         MediaType mediaType = MediaType.parse("application/json");
-        // 1. 构建 JSON 字符串（动态插入 userInput）
         String jsonBody = "{\n" +
                 "  \"messages\": [\n" +
                 "    {\n" +
@@ -52,7 +50,6 @@ public class DeepSeek {
                 "  \"stream\": false\n" +
                 "}";
 
-        // 2. 发送请求
         RequestBody body = RequestBody.create(jsonBody, mediaType);
         Request request = new Request.Builder()
                 .url(API_URL)
@@ -64,17 +61,16 @@ public class DeepSeek {
 
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                System.err.println("请求失败，状态码：" + response.code());
+                logger.severe("请求失败，状态码：" + response.code());
                 return "请求失败：" + response.body().string();
             } else {
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode root = mapper.readTree(response.body().string());
                 JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
-
                 return contentNode.asText();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.severe("调用失败：" + e.getMessage());
             return "调用失败：" + e.getMessage();
         }
     }
@@ -89,22 +85,17 @@ public class DeepSeek {
         if (!transactionId.startsWith("\"")) {
             transactionId = "\"" + transactionId + "\"";
         }
-        List<Transaction> transactions;
-        transactions = JsonUtils.readTransactionsFromClasspath("temp.json");
+
+        List<Transaction> transactions = JsonUtils.readTransactionsFromClasspath("temp.json");
         Transaction transaction = JsonUtils.findTransactionById(transactions, transactionId);
+
         if (transaction == null) {
-            System.out.println("transaction is null");
+            logger.warning("transaction is null");
             return null;
         }
-        OkHttpClient client = new OkHttpClient().newBuilder()
-                .connectTimeout(90, TimeUnit.SECONDS)
-                .writeTimeout(90, TimeUnit.SECONDS)
-                .readTimeout(90, TimeUnit.SECONDS)
-                .build();
+
         MediaType mediaType = MediaType.parse("application/json");
-
         String input = transaction.toString().replace("\"", "\\\"").replace("\n", "\\n");
-
         String jsonBody = "{\n" +
                 "  \"messages\": [\n" +
                 "    {\n" +
@@ -134,24 +125,18 @@ public class DeepSeek {
 
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                System.err.println("请求失败，状态码：" + response.code());
+                logger.severe("请求失败，状态码：" + response.code());
                 return "请求失败：" + response.body().string();
             } else {
-
-                System.out.println("request");
-
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode root = mapper.readTree(response.body().string());
                 JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
-
                 String category = contentNode.asText();
-                System.out.println("update");
                 JsonUtils.updateTempTransactionTypeById(transactionId, category);
-
-                return contentNode.asText();
+                return category;
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.severe("调用失败：" + e.getMessage());
             return "调用失败：" + e.getMessage();
         }
     }
@@ -163,31 +148,28 @@ public class DeepSeek {
      */
     public static void classifyBatchTransaction(String jsonPath) throws IOException, InterruptedException {
         List<String> ids = JsonUtils.getAllTransactionIds(jsonPath);
-        System.out.println("要处理的交易ID数量: " + ids.size());
+        logger.info("要处理的交易ID数量: " + ids.size());
 
-        // 限制并发线程数，比如限制最多同时 5 个请求
-        Semaphore semaphore = new Semaphore(5);
+        Semaphore semaphore = new Semaphore(5); // 限制并发线程数
         CountDownLatch latch = new CountDownLatch(ids.size());
 
         for (String id : ids) {
             executorService.submit(() -> {
                 try {
                     semaphore.acquire(); // 获取许可（控制并发数）
-
                     boolean success = false;
                     int attempts = 0;
                     while (!success && attempts < 3) { // 最多重试 3 次
                         attempts++;
                         try {
                             String category = classifyTransaction(id);
-                            System.out.println("交易ID: " + id + " 分类结果: " + category);
+                            logger.info("交易ID: " + id + " 分类结果: " + category);
                             success = true;
                         } catch (Exception e) {
-                            System.err.println("交易ID: " + id + " 第 " + attempts + " 次分类失败: " + e.getMessage());
+                            logger.warning("交易ID: " + id + " 第 " + attempts + " 次分类失败: " + e.getMessage());
                             Thread.sleep(1000); // 等待再重试
                         }
                     }
-
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } finally {
@@ -197,9 +179,9 @@ public class DeepSeek {
             });
         }
 
-        System.out.println("等待所有任务完成...");
+        logger.info("等待所有任务完成...");
         latch.await();
-        System.out.println("全部任务已完成！");
+        logger.info("全部任务已完成！");
     }
 
     /**
@@ -211,30 +193,20 @@ public class DeepSeek {
      */
     public static String budgetSuggestion(int year, int month) {
         List<Transaction> transactions = JsonUtils.getTransactionsByMonth(year, month);
-
         List<String> inputs = new ArrayList<>();
-
         for (Transaction transaction : transactions) {
             String input = transaction.toString().replace("\"", "\\\"").replace("\n", "\\n");
             inputs.add(input);
         }
 
-        OkHttpClient client = new OkHttpClient().newBuilder()
-                .connectTimeout(60, TimeUnit.SECONDS)
-                .writeTimeout(120, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
-                .build();
         MediaType mediaType = MediaType.parse("application/json");
-
-        // 之后可能需要传输用户的总资产等信息
         String prompt = "Here is my recent billing data, please help me analyze it as follows: \n" +
                 "1.Summarize each category of expenditure (such as catering, transportation, shopping, etc.) and indicate the category with the highest expenditure \n" +
                 "2.Based on last month's expenses, it is recommended to have a reasonable budget for each category for next month\n" +
                 "3.Assuming my monthly income is 5000 yuan, please suggest a reasonable savings target\n" +
-                "4.Please indicate which expenditure categories can be reduced and provide cost saving suggestions+\n" +
+                "4.Please indicate which expenditure categories can be reduced and provide cost saving suggestions\n" +
                 "The billing data is as follows: \n" + inputs;
 
-        // 1. 构建 JSON 字符串（动态插入 userInput）
         String jsonBody = "{\n" +
                 "  \"messages\": [\n" +
                 "    {\n" +
@@ -253,7 +225,6 @@ public class DeepSeek {
                 "  \"stream\": false\n" +
                 "}";
 
-        // 2. 发送请求
         RequestBody body = RequestBody.create(jsonBody, mediaType);
         Request request = new Request.Builder()
                 .url(API_URL)
@@ -265,17 +236,82 @@ public class DeepSeek {
 
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                System.err.println("请求失败，状态码：" + response.code());
+                logger.severe("请求失败，状态码：" + response.code());
                 return "请求失败：" + response.body().string();
             } else {
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode root = mapper.readTree(response.body().string());
                 JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
-
                 return contentNode.asText();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.severe("调用失败：" + e.getMessage());
+            return "调用失败：" + e.getMessage();
+        }
+    }
+
+    public static String analyzeSpendingBehavior(int year, int month) {
+        // 获取指定月份的所有交易数据
+        List<Transaction> transactions = JsonUtils.getTransactionsByMonth(year, month);
+        List<String> inputs = new ArrayList<>();
+
+        // 构建用于分析的输入内容
+        for (Transaction transaction : transactions) {
+            String input = transaction.toString().replace("\"", "\\\"").replace("\n", "\\n");
+            inputs.add(input);
+        }
+
+        // 构建提示信息
+        String prompt = "Here is my recent billing data, please help me analyze it as follows: \n" +
+                "1.Summarize each category of expenditure (such as catering, transportation, shopping, etc.) and indicate the category with the highest expenditure. \n" +
+                "2.Based on last month's expenses, it is recommended to have a reasonable budget for each category for next month.\n" +
+                "3.Assuming my monthly income is 5000 yuan, please suggest a reasonable savings target.\n" +
+                "4.Please indicate which expenditure categories can be reduced and provide cost-saving suggestions.\n" +
+                "The billing data is as follows: \n" + String.join("\n", inputs);
+
+        // 构建请求体
+        MediaType mediaType = MediaType.parse("application/json");
+        String jsonBody = "{\n" +
+                "  \"messages\": [\n" +
+                "    {\n" +
+                "      \"content\": \"You are a helpful assistant who specializes in personal finance.\",\n" +
+                "      \"role\": \"system\"\n" +
+                "    },\n" +
+                "    {\n" +
+                "      \"content\": \"" + prompt.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\",\n" +
+                "      \"role\": \"user\"\n" +
+                "    }\n" +
+                "  ],\n" +
+                "  \"model\": \"deepseek-chat\",\n" +
+                "  \"max_tokens\": 2048,\n" +
+                "  \"temperature\": 1,\n" +
+                "  \"tool_choice\": \"none\",\n" +
+                "  \"stream\": false\n" +
+                "}";
+
+        // 创建请求体和请求对象
+        RequestBody body = RequestBody.create(jsonBody, mediaType);
+        Request request = new Request.Builder()
+                .url(API_URL)
+                .method("POST", body)
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .addHeader("Authorization", "Bearer " + API_KEY)
+                .build();
+
+        // 发送请求并处理响应
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                logger.severe("请求失败，状态码：" + response.code());
+                return "请求失败：" + response.body().string();
+            } else {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode root = mapper.readTree(response.body().string());
+                JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
+                return contentNode.asText();
+            }
+        } catch (IOException e) {
+            logger.severe("调用失败：" + e.getMessage());
             return "调用失败：" + e.getMessage();
         }
     }
