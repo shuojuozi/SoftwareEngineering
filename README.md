@@ -4,6 +4,7 @@ A personal finance dashboard that integrates visual analytics with AI-powered tr
 
 - 🧪 Version 1: UI and backend are separate.
 - ✅ Version 2: First integrated test with a unified entry point and partial service wiring.
+- 🚀 **Version 3**: Full integration with intelligent reasoning, export, and user customization support.
 
 ---
 
@@ -159,7 +160,6 @@ src/
 │ │ ├── Ui/
 │ │ │ ├── AnalysisUi.java # Expense trend chart + summary
 │ │ │ ├── BudgetUi.java # Monthly savings progress panel
-│ │ │ ├── ClassifiedUi.java # Expense classification interface
 │ │ │ ├── DashBoardUi.java # Main dashboard with pie/bar charts
 │ │ │ ├── NavigationSuper.java # Base class for UI switching
 │ │ │ ├── SettingsUi.java # User-editable financial parameters
