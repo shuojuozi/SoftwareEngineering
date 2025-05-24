@@ -237,7 +237,7 @@ src/
       <td>Yichen Song</td>
       <td>2022213669</td>
       <td>221170515</td>
-      <td>Designed Budgeting and Analysis interface and write the version introduction.</td>
+      <td>Designed Budgeting and Analysis interface, fix some bugs and write the version introduction.</td>
     </tr>
     <tr>
       <td>Guangming Guo</td>
