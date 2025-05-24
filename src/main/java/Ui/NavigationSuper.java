@@ -1,32 +1,14 @@
 package Ui;
 
-import javafx.application.Application;
+import utils.DateContext;
 import javafx.geometry.Insets;
-import javafx.scene.Scene;
 import javafx.scene.control.Label;
-import javafx.scene.layout.*;
-import javafx.stage.Stage;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.VBox;
 
-public class NavigationSuper extends Application {
+public class NavigationSuper {
     public static BorderPane root;
-
-    public NavigationSuper() {
-        // Initialize the root layout
-        root = new BorderPane();
-        root.setLeft(createSidebar());
-        root.setCenter(DashBoardUi.createDashboardPane());
-    }
-    @Override
-    public void start(Stage stage) {
-        root = new BorderPane();
-        root.setLeft(createSidebar()); // Sidebar for navigation
-        root.setCenter(DashBoardUi.createDashboardPane());
-        Scene scene = new Scene(root, 1200, 700);
-        stage.setScene(scene);
-        stage.setTitle("Financial Dashboard");
-        stage.show();
-    }
-
 
     public static VBox createSidebar() {
         VBox box = new VBox(15);
@@ -35,24 +17,26 @@ public class NavigationSuper extends Application {
 
         // Labels for different pages
         box.getChildren().addAll(
-                createSidebarLabel("📊 Dashboard", e -> root.setCenter(DashBoardUi.createDashboardPane())),
-                createSidebarLabel("Trade management", e -> root.setCenter(TradeUi.createTradeManagementPage())),
-                createSidebarLabel("Transaction details", e -> root.setCenter(TransactionUi.createTransactionDetailPage())),
-                createSidebarLabel("Classified management of expenditure", e -> root.setCenter(ClassifiedUi.createDashboardPane())),
-                createSidebarLabel("Budgeting and savings goals", e -> root.setCenter(BudgetUi.createDashboardPane())),
-                createSidebarLabel("Analysis and report", e -> root.setCenter(AnalysisUi.createDashboardPane()))
+                createSidebarLabel("📊 Dashboard", e -> root.setCenter(
+                        DashBoardUi.createDashboardPane(DateContext.getYear(), DateContext.getMonth()))),
+                createSidebarLabel("💼 Trade management", e -> root.setCenter(
+                        TradeUi.createTradeManagementPage())),
+//              createSidebarLabel("Classified management of expenditure", e -> root.setCenter(
+//                      ClassifiedUi.createDashboardPane())),
+                createSidebarLabel("💰 Budgeting and savings goals", e -> root.setCenter(
+                        BudgetUi.createDashboardPane())),
+                createSidebarLabel("📈 Analysis and report", e -> root.setCenter(
+                        AnalysisUi.createDashboardPane())),
+                createSidebarLabel("🛠 Settings", e -> root.setCenter(
+                        SettingsUi.createSettingsPane()))
         );
 
         return box;
     }
 
-    public static Label createSidebarLabel(String text, javafx.event.EventHandler<javafx.scene.input.MouseEvent> handler) {
+    public static Label createSidebarLabel(String text, javafx.event.EventHandler<MouseEvent> handler) {
         Label label = new Label(text);
         label.setOnMouseClicked(handler);
         return label;
-    }
-
-    public static void main(String[] args) {
-        launch(args);
     }
 }

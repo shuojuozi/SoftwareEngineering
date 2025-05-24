@@ -1,9 +1,6 @@
 package Ui;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,7 +18,7 @@ import pojo.Transaction;
 import javafx.collections.FXCollections;
 import utils.JsonUtils;
 
-public class TradeListUi extends NavigationSuper {
+public class TradeListUi {
 
     private static ObservableList<Transaction> transactionData = FXCollections.observableArrayList();
 
@@ -46,7 +43,31 @@ public class TradeListUi extends NavigationSuper {
 
         TableView<Transaction> transactionTable = new TableView<>();
 
-        // Define columns
+        // Search logic
+        searchButton.setOnAction(e -> {
+            String keyword = searchField.getText().trim().toLowerCase();
+            ObservableList<Transaction> filtered = FXCollections.observableArrayList();
+
+            for (Transaction t : transactionData) {
+                if ((t.getTransactionTime() != null && t.getTransactionTime().toLowerCase().contains(keyword)) ||
+                        (t.getTransactionType() != null && t.getTransactionType().toLowerCase().contains(keyword)) ||
+                        (t.getCounterparty() != null && t.getCounterparty().toLowerCase().contains(keyword)) ||
+                        (t.getItem() != null && t.getItem().toLowerCase().contains(keyword)) ||
+                        (t.getIncExp() != null && t.getIncExp().toLowerCase().contains(keyword)) ||
+                        (String.valueOf(t.getAmount()).contains(keyword)) ||
+                        (t.getPaymentMethod() != null && t.getPaymentMethod().toLowerCase().contains(keyword)) ||
+                        (t.getStatus() != null && t.getStatus().toLowerCase().contains(keyword)) ||
+                        (t.getTransactionId() != null && t.getTransactionId().toLowerCase().contains(keyword)) ||
+                        (t.getMerchantId() != null && t.getMerchantId().toLowerCase().contains(keyword)) ||
+                        (t.getNote() != null && t.getNote().toLowerCase().contains(keyword))) {
+                    filtered.add(t);
+                }
+            }
+
+            transactionTable.setItems(filtered);
+        });
+
+        // Define table columns
         TableColumn<Transaction, String> dateColumn = new TableColumn<>("Transaction Date");
         TableColumn<Transaction, String> typeColumn = new TableColumn<>("Transaction Type");
         TableColumn<Transaction, String> counterpartyColumn = new TableColumn<>("Counterparty");
@@ -59,7 +80,7 @@ public class TradeListUi extends NavigationSuper {
         TableColumn<Transaction, String> merchantIdColumn = new TableColumn<>("Merchant ID");
         TableColumn<Transaction, String> remarksColumn = new TableColumn<>("Remarks");
 
-        // Set up cell value factories for all columns
+        // Set column values
         dateColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getTransactionTime()));
         typeColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getTransactionType()));
         counterpartyColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getCounterparty()));
@@ -72,118 +93,91 @@ public class TradeListUi extends NavigationSuper {
         merchantIdColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getMerchantId()));
         remarksColumn.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getNote()));
 
-        // Add columns to the table
         transactionTable.getColumns().addAll(
                 dateColumn, typeColumn, counterpartyColumn, itemColumn,
                 incExpColumn, amountColumn, paymentMethodColumn, statusColumn,
                 transactionIdColumn, merchantIdColumn, remarksColumn
         );
 
-        // Load transaction data into the ObservableList
+        // Load data from JSON file
         List<Transaction> transactions = JsonUtils.readTransactionsFromClasspath("transactionData.json");
-        transactionData.clear();  // Clear existing data to ensure it's reloaded
+        transactionData.clear();
         transactionData.addAll(transactions);
-
-        // Set table items
         transactionTable.setItems(transactionData);
         transactionTable.setMaxHeight(350);
 
-        // Add search and table to the transaction list container
         transactionListContainer.getChildren().addAll(transactionListLabel, searchField, searchButton, transactionTable);
-
-        // Return the final container
         mainContent.getChildren().add(transactionListContainer);
-
         return mainContent;
     }
 
     public static HBox createTradeButton() {
-        // 创建用于水平排列按钮的主容器
+        // Container for horizontal button layout
         HBox buttonContainer = new HBox(20);
         buttonContainer.setPadding(new Insets(20));
-        buttonContainer.setStyle("-fx-alignment: center;");  // 将按钮容器居中对齐
+        buttonContainer.setStyle("-fx-alignment: center;");
 
-        // 创建“自动导入文件”按钮的容器
+        // Container for "Manual Import File" button
         VBox autoImportContainer = new VBox(10);
         autoImportContainer.setPadding(new Insets(10));
         autoImportContainer.setStyle("-fx-background-color: lightblue; -fx-border-color: blue; -fx-border-width: 2px; -fx-alignment: center;");
 
-        // 创建“自动导入文件”按钮
-        Button autoImportButton = new Button("Auto Import File");
+        Button autoImportButton = new Button("Manual Import File");
         autoImportButton.setFont(new Font(14));
-        autoImportButton.setMinWidth(200);  // 设置按钮的最小宽度
+        autoImportButton.setMinWidth(200);
         autoImportButton.setStyle("-fx-background-color: blue; -fx-text-fill: white;");
 
-        // 添加标题和按钮到容器
-        Label autoImportTitle = new Label("Auto Import Part");
+        Label autoImportTitle = new Label("Manual Import Part");
         autoImportTitle.setFont(new Font(16));
         autoImportTitle.setStyle("-fx-font-weight: bold;");
         autoImportContainer.getChildren().addAll(autoImportTitle, autoImportButton);
 
-        // 创建“查看详情”按钮的容器
+        // Container for "Details" button
         VBox viewDetailsContainer = new VBox(10);
         viewDetailsContainer.setPadding(new Insets(10));
         viewDetailsContainer.setStyle("-fx-background-color: lightgreen; -fx-border-color: green; -fx-border-width: 2px; -fx-alignment: center;");
 
-        // 创建“查看详情”按钮
         Button viewDetailsButton = new Button("Details");
         viewDetailsButton.setFont(new Font(14));
-        viewDetailsButton.setMinWidth(200);  // 设置按钮的最小宽度
+        viewDetailsButton.setMinWidth(200);
         viewDetailsButton.setStyle("-fx-background-color: green; -fx-text-fill: white;");
 
-        // 添加标题和按钮到容器
         Label viewDetailsTitle = new Label("Details Part");
         viewDetailsTitle.setFont(new Font(16));
         viewDetailsTitle.setStyle("-fx-font-weight: bold;");
         viewDetailsContainer.getChildren().addAll(viewDetailsTitle, viewDetailsButton);
 
-        // 处理按钮操作
+        // Button actions
         autoImportButton.setOnAction(e -> handleAutoImportAction());
         viewDetailsButton.setOnAction(e -> handleViewDetailsAction());
 
-        // 将两个容器添加到主容器（HBox）
         buttonContainer.getChildren().addAll(autoImportContainer, viewDetailsContainer);
-
         return buttonContainer;
     }
 
     private static void handleViewDetailsAction() {
-        // Create a new stage (window) to show the transaction details
         Stage detailsStage = new Stage();
-
-        // Create the Transaction List UI with freshly loaded data
         VBox transactionListPage = TradeListUi.createTransactionListPage();
-
-        // Set the scene for the new stage
-        Scene scene = new Scene(transactionListPage, 800, 600);  // Set the size of the new window
+        Scene scene = new Scene(transactionListPage, 800, 600);
         detailsStage.setScene(scene);
-
-        // Set the title for the new window
         detailsStage.setTitle("Transaction Details");
-
-        // Show the new window
         detailsStage.show();
     }
 
     private static void handleAutoImportAction() {
-        // 创建一个文本输入对话框让用户输入文件路径
+        // Prompt for file path
         TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Auto");
+        dialog.setTitle("Manual");
         dialog.setHeaderText("Select CSV File Path");
-        dialog.setContentText("File Path：");
+        dialog.setContentText("File Path:");
 
-        // 显示对话框并等待用户输入
         Optional<String> result = dialog.showAndWait();
-
         result.ifPresent(filePath -> {
-            // 验证文件路径
             File file = new File(filePath);
             if (file.exists() && file.isFile() && file.canRead()) {
-                // 继续导入CSV文件
                 try {
                     JsonUtils.parseCsv2Json(filePath);
 
-                    // 导入成功后显示确认提示框
                     Alert infoAlert = new Alert(AlertType.INFORMATION);
                     infoAlert.setTitle("Import Successful");
                     infoAlert.setHeaderText(null);
@@ -192,7 +186,6 @@ public class TradeListUi extends NavigationSuper {
 
                 } catch (Exception e) {
                     e.printStackTrace();
-                    // 如果导入失败，显示错误提示框
                     Alert errorAlert = new Alert(AlertType.ERROR);
                     errorAlert.setTitle("Import Error");
                     errorAlert.setHeaderText("CSV File cannot be Imported");
@@ -200,7 +193,6 @@ public class TradeListUi extends NavigationSuper {
                     errorAlert.showAndWait();
                 }
             } else {
-                // 对于无效的文件路径，显示警告
                 Alert warningAlert = new Alert(AlertType.WARNING);
                 warningAlert.setTitle("Invalid File Path");
                 warningAlert.setHeaderText("Invalid File Path");
@@ -209,7 +201,4 @@ public class TradeListUi extends NavigationSuper {
             }
         });
     }
-
-
-
 }

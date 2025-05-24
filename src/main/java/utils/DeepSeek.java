@@ -1,5 +1,6 @@
 package utils;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -7,276 +8,209 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import okhttp3.*;
 import pojo.Transaction;
 
+import java.io.File;
 import java.io.IOException;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.file.Files;
+import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
+import java.util.prefs.Preferences;
 
+/** DeepSeek API wrapper: multi-turn conversation + parallel classification + progress callback */
 public class DeepSeek {
     private static final Logger logger = Logger.getLogger(DeepSeek.class.getName());
-    private static final String API_KEY = ConfigUtil.getApiKey();
     private static final String API_URL = "https://api.deepseek.com/chat/completions";
-    private static final ExecutorService executorService = Executors.newFixedThreadPool(10);
+    private static final Preferences prefs = Preferences.userNodeForPackage(DeepSeek.class);
+    private static final ObjectMapper mapper = new ObjectMapper();
 
-    /**
-     * 和DeepSeek进行对话
-     *
-     * @param userInput 用户的输入（字符串）
-     * @return DeepSeek的返回内容
-     */
-    public static String communicate(String userInput) {
-        OkHttpClient client = new OkHttpClient().newBuilder()
+    /* ---------------- Session Persistence ---------------- */
+    private static final File SESSION_FILE = new File(System.getProperty("user.home"), ".deepseek_sessions.json");
+    private static final Map<String, ArrayNode> SESSION_MAP = loadSessions();
+
+    private static Map<String, ArrayNode> loadSessions() {
+        if (!SESSION_FILE.exists()) return new ConcurrentHashMap<>();
+        try {
+            byte[] data = Files.readAllBytes(SESSION_FILE.toPath());
+            if (data.length == 0) return new ConcurrentHashMap<>();
+            Map<String, List<Map<String, String>>> raw = mapper.readValue(data, new TypeReference<>() {});
+            Map<String, ArrayNode> map = new ConcurrentHashMap<>();
+            raw.forEach((sid, list) -> map.put(sid, mapper.valueToTree(list)));
+            return map;
+        } catch (IOException e) {
+            logger.warning("Failed to load session file: " + e.getMessage());
+            return new ConcurrentHashMap<>();
+        }
+    }
+
+    private static void persistSessions() {
+        try {
+            Map<String, List<Map<String, String>>> out = new HashMap<>();
+            SESSION_MAP.forEach((sid, arr) -> {
+                List<Map<String, String>> lst = new ArrayList<>();
+                arr.forEach(n -> lst.add(Map.of("role", n.get("role").asText(), "content", n.get("content").asText())));
+                out.put(sid, lst);
+            });
+            mapper.writerWithDefaultPrettyPrinter().writeValue(SESSION_FILE, out);
+        } catch (IOException e) {
+            logger.warning("Failed to write session file: " + e.getMessage());
+        }
+    }
+
+    /* ---------------- Core Chat Logic ---------------- */
+    private static final String DEFAULT_SYS = "You are a helpful assistant";
+
+    public static String chat(String sessionId, String userInput) {
+        String key = prefs.get("deepseek_api_key", "");
+        if (key.isBlank())
+            return "⚠️ DeepSeek API Key is not configured. Please enter it in the ⚙️ Settings.";
+
+        try {
+            ArrayNode msgs = SESSION_MAP.computeIfAbsent(sessionId, k -> {
+                ArrayNode arr = mapper.createArrayNode();
+
+                // System prompt
+                ObjectNode sys = mapper.createObjectNode();
+                sys.put("role", "system");
+                sys.put("content", DEFAULT_SYS);
+                arr.add(sys);
+
+                // Financial context (only on first session creation)
+                ObjectNode ctx = mapper.createObjectNode();
+                ctx.put("role", "system");
+                ctx.put("content", buildFinancialContext());
+                arr.add(ctx);
+
+                return arr;
+            });
+
+            ObjectNode user = mapper.createObjectNode();
+            user.put("role", "user").put("content", userInput);
+            msgs.add(user);
+
+            String rsp = doCompletion(msgs, key);
+
+            ObjectNode asst = mapper.createObjectNode();
+            asst.put("role", "assistant").put("content", rsp);
+            msgs.add(asst);
+
+            persistSessions();
+            return rsp;
+        } catch (Exception e) {
+            logger.severe("DeepSeek API call failed: " + e.getMessage());
+            return "Call failed: " + e.getMessage();
+        }
+    }
+
+    /** Build context string using current financial data */
+    private static String buildFinancialContext() {
+        double totalAssets = FinanceContext.getTotalAssets();
+        double savingsGoal = FinanceContext.getSavingsGoal();
+        double monthlyIncome = FinanceContext.getMonthlyIncome();
+
+        int year = DateContext.getYear();
+        int month = DateContext.getMonth();
+        double spent = JsonUtils.getTransactionsByMonth(year, month)
+                .stream()
+                .mapToDouble(Transaction::getAmount)
+                .sum();
+
+        return String.format(
+                "User Profile:\n" +
+                        "- Total assets: %.2f yuan\n" +
+                        "- Savings goal: %.2f yuan\n" +
+                        "- Monthly income: %.2f yuan\n" +
+                        "- Expenditure for %d-%d so far: %.2f yuan\n" +
+                        "Use this information when giving financial advice.",
+                totalAssets, savingsGoal, monthlyIncome, year, month, spent
+        );
+    }
+
+    private static String doCompletion(ArrayNode msgs, String key) throws IOException {
+        OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(60, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .build();
-        MediaType mediaType = MediaType.parse("application/json");
-        // 1. 构建 JSON 字符串（动态插入 userInput）
-        String jsonBody = "{\n" +
-                "  \"messages\": [\n" +
-                "    {\n" +
-                "      \"content\": \"You are a helpful assistant\",\n" +
-                "      \"role\": \"system\"\n" +
-                "    },\n" +
-                "    {\n" +
-                "      \"content\": \"" + userInput + "\",\n" +
-                "      \"role\": \"user\"\n" +
-                "    }\n" +
-                "  ],\n" +
-                "  \"model\": \"deepseek-chat\",\n" +
-                "  \"max_tokens\": 2048,\n" +
-                "  \"temperature\": 1,\n" +
-                "  \"tool_choice\": \"none\",\n" +
-                "  \"stream\": false\n" +
-                "}";
-
-        // 2. 发送请求
-        RequestBody body = RequestBody.create(jsonBody, mediaType);
-        Request request = new Request.Builder()
-                .url(API_URL)
-                .method("POST", body)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Accept", "application/json")
-                .addHeader("Authorization", "Bearer " + API_KEY)
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                System.err.println("请求失败，状态码：" + response.code());
-                return "请求失败：" + response.body().string();
-            } else {
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode root = mapper.readTree(response.body().string());
-                JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
-
-                return contentNode.asText();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            return "调用失败：" + e.getMessage();
-        }
-    }
-
-    /**
-     * 使用DeepSeek对账单进行分类
-     *
-     * @param transactionId 账单的id
-     * @return DeepSeek返回的分类结果
-     */
-    public static String classifyTransaction(String transactionId) {
-        if (!transactionId.startsWith("\"")) {
-            transactionId = "\"" + transactionId + "\"";
-        }
-        List<Transaction> transactions;
-        transactions = JsonUtils.readTransactionsFromClasspath("temp.json");
-        Transaction transaction = JsonUtils.findTransactionById(transactions, transactionId);
-        if (transaction == null) {
-            System.out.println("transaction is null");
-            return null;
-        }
-        OkHttpClient client = new OkHttpClient().newBuilder()
-                .connectTimeout(90, TimeUnit.SECONDS)
-                .writeTimeout(90, TimeUnit.SECONDS)
-                .readTimeout(90, TimeUnit.SECONDS)
-                .build();
-        MediaType mediaType = MediaType.parse("application/json");
-
-        String input = transaction.toString().replace("\"", "\\\"").replace("\n", "\\n");
-
-        String jsonBody = "{\n" +
-                "  \"messages\": [\n" +
-                "    {\n" +
-                "      \"content\": \"You are a helpful assistant that classifies bill items into categories such as Food and Dining, Transportation, Housing, Entertainment, Shopping, HealthcareEducation and Training, Communication, Finance and Investment, transfer accounts. Please classify the bill item below into one of these categories. Respond with only the category.\",\n" +
-                "      \"role\": \"system\"\n" +
-                "    },\n" +
-                "    {\n" +
-                "      \"content\": \"" + input + "\",\n" +
-                "      \"role\": \"user\"\n" +
-                "    }\n" +
-                "  ],\n" +
-                "  \"model\": \"deepseek-chat\",\n" +
-                "  \"max_tokens\": 2048,\n" +
-                "  \"temperature\": 1,\n" +
-                "  \"tool_choice\": \"none\",\n" +
-                "  \"stream\": false\n" +
-                "}";
-
-        RequestBody body = RequestBody.create(jsonBody, mediaType);
-        Request request = new Request.Builder()
-                .url(API_URL)
-                .method("POST", body)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Accept", "application/json")
-                .addHeader("Authorization", "Bearer " + API_KEY)
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                System.err.println("请求失败，状态码：" + response.code());
-                return "请求失败：" + response.body().string();
-            } else {
-
-                System.out.println("request");
-
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode root = mapper.readTree(response.body().string());
-                JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
-
-                String category = contentNode.asText();
-                System.out.println("update");
-                JsonUtils.updateTempTransactionTypeById(transactionId, category);
-
-                return contentNode.asText();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            return "调用失败：" + e.getMessage();
-        }
-    }
-
-    /**
-     * 批量对json文件里的transaction进行分类
-     *
-     * @param jsonPath json文件的路径
-     */
-    public static void classifyBatchTransaction(String jsonPath) throws IOException, InterruptedException {
-        List<String> ids = JsonUtils.getAllTransactionIds(jsonPath);
-        System.out.println("要处理的交易ID数量: " + ids.size());
-
-        // 限制并发线程数，比如限制最多同时 5 个请求
-        Semaphore semaphore = new Semaphore(5);
-        CountDownLatch latch = new CountDownLatch(ids.size());
-
-        for (String id : ids) {
-            executorService.submit(() -> {
-                try {
-                    semaphore.acquire(); // 获取许可（控制并发数）
-
-                    boolean success = false;
-                    int attempts = 0;
-                    while (!success && attempts < 3) { // 最多重试 3 次
-                        attempts++;
-                        try {
-                            String category = classifyTransaction(id);
-                            System.out.println("交易ID: " + id + " 分类结果: " + category);
-                            success = true;
-                        } catch (Exception e) {
-                            System.err.println("交易ID: " + id + " 第 " + attempts + " 次分类失败: " + e.getMessage());
-                            Thread.sleep(1000); // 等待再重试
-                        }
-                    }
-
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                } finally {
-                    semaphore.release();
-                    latch.countDown();
-                }
-            });
-        }
-
-        System.out.println("等待所有任务完成...");
-        latch.await();
-        System.out.println("全部任务已完成！");
-    }
-
-    /**
-     * AI根据用户的消费行为提供一些个性化建议
-     *
-     * @param year 传输给AI的账单的年份
-     * @param month 传输给AI的账单的月份
-     * @return AI的回答
-     */
-    public static String budgetSuggestion(int year, int month) {
-        List<Transaction> transactions = JsonUtils.getTransactionsByMonth(year, month);
-
-        List<String> inputs = new ArrayList<>();
-
-        for (Transaction transaction : transactions) {
-            String input = transaction.toString().replace("\"", "\\\"").replace("\n", "\\n");
-            inputs.add(input);
-        }
-
-        OkHttpClient client = new OkHttpClient().newBuilder()
-                .connectTimeout(60, TimeUnit.SECONDS)
-                .writeTimeout(120, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
                 .build();
-        MediaType mediaType = MediaType.parse("application/json");
 
-        // 之后可能需要传输用户的总资产等信息
-        String prompt = "Here is my recent billing data, please help me analyze it as follows: \n" +
-                "1.Summarize each category of expenditure (such as catering, transportation, shopping, etc.) and indicate the category with the highest expenditure \n" +
-                "2.Based on last month's expenses, it is recommended to have a reasonable budget for each category for next month\n" +
-                "3.Assuming my monthly income is 5000 yuan, please suggest a reasonable savings target\n" +
-                "4.Please indicate which expenditure categories can be reduced and provide cost saving suggestions+\n" +
-                "The billing data is as follows: \n" + inputs;
+        ObjectNode body = mapper.createObjectNode();
+        body.put("model", "deepseek-chat").set("messages", msgs);
 
-        // 1. 构建 JSON 字符串（动态插入 userInput）
-        String jsonBody = "{\n" +
-                "  \"messages\": [\n" +
-                "    {\n" +
-                "      \"content\": \"You are a helpful assistant who specializes in personal finance.\",\n" +
-                "      \"role\": \"system\"\n" +
-                "    },\n" +
-                "    {\n" +
-                "      \"content\": \"" + prompt.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\",\n" +
-                "      \"role\": \"user\"\n" +
-                "    }\n" +
-                "  ],\n" +
-                "  \"model\": \"deepseek-chat\",\n" +
-                "  \"max_tokens\": 2048,\n" +
-                "  \"temperature\": 1,\n" +
-                "  \"tool_choice\": \"none\",\n" +
-                "  \"stream\": false\n" +
-                "}";
-
-        // 2. 发送请求
-        RequestBody body = RequestBody.create(jsonBody, mediaType);
-        Request request = new Request.Builder()
-                .url(API_URL)
-                .method("POST", body)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Accept", "application/json")
-                .addHeader("Authorization", "Bearer " + API_KEY)
+        Request req = new Request.Builder().url(API_URL)
+                .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
+                .addHeader("Authorization", "Bearer " + key)
                 .build();
 
-        try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                System.err.println("请求失败，状态码：" + response.code());
-                return "请求失败：" + response.body().string();
-            } else {
-                ObjectMapper mapper = new ObjectMapper();
-                JsonNode root = mapper.readTree(response.body().string());
-                JsonNode contentNode = root.path("choices").get(0).path("message").path("content");
+        try (Response resp = client.newCall(req).execute()) {
+            if (!resp.isSuccessful())
+                throw new IOException("HTTP " + resp.code() + ": " + resp.body().string());
 
-                return contentNode.asText();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            return "调用失败：" + e.getMessage();
+            JsonNode root = mapper.readTree(resp.body().string());
+            return root.path("choices").get(0).path("message").path("content").asText();
         }
     }
+
+    /* ---------------- Classification Utilities ---------------- */
+    private static final List<String> ALLOWED = List.of(
+            "food and dining", "transportation", "housing", "entertainment", "shopping",
+            "healthcare", "education and training", "communication", "finance and investment", "transfer accounts"
+    );
+
+    private static String normalize(String raw) {
+        String s = raw.toLowerCase().replaceAll("[^a-z ]", " ").replaceAll("\\s{2,}", " ").trim();
+        for (String c : ALLOWED) if (s.contains(c)) return c;
+        return "unknown";
+    }
+
+    /**
+     * Parallel batch classification: updates memory and writes to file once
+     */
+    public static void classifyBatchTransaction(String jsonPath, ProgressCallback cb) throws IOException, InterruptedException {
+        ObjectNode[] nodes = mapper.readValue(new File(jsonPath), ObjectNode[].class);
+        Map<String, ObjectNode> index = new ConcurrentHashMap<>();
+        for (ObjectNode n : nodes) {
+            String id = StringUtil.cleanId(n.path("transactionId").asText());
+            index.put(id, n);
+        }
+        int total = index.size();
+        AtomicInteger done = new AtomicInteger();
+        ExecutorService pool = Executors.newFixedThreadPool(10);
+        CountDownLatch latch = new CountDownLatch(total);
+
+        index.forEach((id, node) -> pool.submit(() -> {
+            try {
+                String cat = classifyInMemory(id, node);
+                node.put("transactionType", cat);
+            } finally {
+                cb.update(done.incrementAndGet() * 1.0 / total);
+                latch.countDown();
+            }
+        }));
+        latch.await();
+        pool.shutdown();
+        mapper.writerWithDefaultPrettyPrinter().writeValue(new File(jsonPath), nodes);
+    }
+
+    private static String classifyInMemory(String id, JsonNode node) {
+        String prompt = "You are a helpful assistant that classifies bill items into categories "
+                + "(food and dining, transportation, housing, entertainment, shopping, healthcare, "
+                + "education and training, communication, finance and investment, transfer accounts). "
+                + "Respond ONLY with the category.";
+        return normalize(chat("classify_" + id, prompt + "\n" + node.toString()));
+    }
+
+    /** Deprecated method kept for backward compatibility — calls internal version with empty callback */
+    public static void classifyBatchTransaction(String jsonPath) throws IOException, InterruptedException {
+        classifyBatchTransaction(jsonPath, p -> {});
+    }
+
+    /** Progress callback interface */
+    @FunctionalInterface
+    public interface ProgressCallback {
+        void update(double p);
+    }
+
+    // -----------------------------------------
+    // Other helper methods like budgetSuggestion can be kept or added here.
+    // -----------------------------------------
 }
