@@ -110,6 +110,98 @@ src/
 
 ![image-11](version_picture/11.png)
 
+## ✅ Version 3 – Smart Budget Assistant with Full Integration and AI Reasoning
+
+🎯 **UI + Backend fully integrated** with interactive dashboards, CSV support, real-time AI financial reasoning, and full user control over financial parameters.
+
+---
+
+### ✨ What's New in V3
+
+- ✅ **Full AI reasoning integration**  
+  Smart Budget Assistant now interprets user financial profiles and offers actionable insights.
+- ✅ **Real-time chart updates**  
+  Dashboard reflects selected month and year dynamically.
+- ✅ **Dual-mode CSV import**  
+  Manual entry and drag-and-drop file upload supported.
+- ✅ **Search transactions**  
+  Keyword-based filtering in the transaction list table.
+- ✅ **Settings panel**  
+  Modify income, total assets, savings goal, API key, and current date/month.
+- ✅ **Financial summary + trend**  
+  Daily line chart and summary statistics with export options.
+- ✅ **Export support**  
+  One-click export to PDF or CSV in report view.
+
+---
+
+### 🧠 AI Capability
+
+> Powered by DeepSeek API (user-provided)
+
+- 📊 Personalized summaries (assets, goal gap, income/spending comparison)
+- ⚠️ Observations (e.g., “You spent 82% of your income”)
+- ✅ Recommendations to improve budget balance
+- 💬 Supports natural language input (e.g., “how about my profile?”)
+
+---
+
+### 🏗 Directory Layout (v3)
+
+```
+src/
+├── main/
+│ ├── java/
+│ │ ├── com.example/
+│ │ │ └── App.java # Application entry point
+│ │ ├── pojo/
+│ │ │ └── Transaction.java # Data model for transactions
+│ │ ├── Ui/
+│ │ │ ├── AnalysisUi.java # Expense trend chart + summary
+│ │ │ ├── BudgetUi.java # Monthly savings progress panel
+│ │ │ ├── ClassifiedUi.java # Expense classification interface
+│ │ │ ├── DashBoardUi.java # Main dashboard with pie/bar charts
+│ │ │ ├── NavigationSuper.java # Base class for UI switching
+│ │ │ ├── SettingsUi.java # User-editable financial parameters
+│ │ │ ├── TradeListUi.java # Transaction table view with search
+│ │ │ ├── TradeUi.java # CSV/manual transaction input
+│ │ │ └── TransactionUi.java # Transaction info visualization
+│ │ ├── utils/
+│ │ │ ├── CalcExpense.java # Budget and stats calculator
+│ │ │ ├── DateContext.java # Stores selected year/month
+│ │ │ ├── DeepSeek.java # AI model caller (e.g., DeepSeek)
+│ │ │ ├── FinanceContext.java # Central financial state object
+│ │ │ ├── JsonUtils.java # JSON / CSV import/export logic
+│ │ │ ├── ProgressCallback.java # Visual feedback interface for loading
+│ │ │ ├── ReportUtils.java # Export PDF/CSV report utilities
+│ │ │ ├── StringUtil.java # Text formatting helper
+│ │ │ └── UserInputHandler.java # Handles user input in AI chat
+│
+│ └── resources/
+│ ├── data/
+│ │ ├── csv/
+│ │ │ └── 微信支付账单(20250225-20250324).csv # Sample imported file
+│ │ └── transactionData.json # Transaction data file
+│ └── ms*.ttc # Fonts used in JavaFX charts
+
+```
+
+### ▶️ Operation result (v3)
+
+![image-01](version_picture/l1.png)
+
+![image-02](version_picture/l2.png)
+
+![image-03](version_picture/l3.png)
+
+![image-04](version_picture/l4.png)
+
+![image-05](version_picture/l5.png)
+
+![image-06](version_picture/l6.png)
+
+![image-07](version_picture/l7.png)
+
 ### 
 <h2 style="font-family: Arial, sans-serif;">Team Member Responsibilities</h2>
 
