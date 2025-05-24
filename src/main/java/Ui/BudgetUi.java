@@ -1,154 +1,195 @@
 package Ui;
 
+// Imports
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
+import org.commonmark.node.*;
+import org.commonmark.parser.Parser;
+import org.commonmark.renderer.html.HtmlRenderer;
+import pojo.Transaction;
+import utils.JsonUtils;
+import utils.DateContext;
+import java.util.List;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import javafx.scene.text.Font;
-import javafx.stage.Stage;
+import javafx.scene.paint.Color;
+import utils.DeepSeek;
+import utils.FinanceContext;
 
+import java.util.UUID;
 
-public class BudgetUi extends NavigationSuper {
-    private BorderPane root;
-    private static double money ;
+public class BudgetUi {
 
-    public BudgetUi() {
-        // Initialize the root layout
-        root = new BorderPane();
-        root.setLeft(createSidebar());
-        root.setCenter(createDashboardPane());
-    }
-    @Override
-    public void start(Stage primaryStage) {
-        root = new BorderPane();
-        root.setLeft(createSidebar()); // Sidebar for navigation
-        root.setCenter(createDashboardPane()); // Default page (Dashboard)
-        //VBox dashboardPane = createDashboardPane();
-        Scene scene = new Scene(root, 800, 600);
-        primaryStage.setTitle("Dashboard");
-        primaryStage.setScene(scene);
-        primaryStage.show();
-    }
+    private static final BudgetUi INSTANCE = new BudgetUi();
+    public static VBox createDashboardPane() { return INSTANCE.layout; }
 
-    public static VBox createDashboardPane() {
-        // Create four containers in a horizontal row
-        HBox topRow = new HBox();
-        topRow.setPadding(new Insets(20));
-        topRow.setSpacing(200); // Add spacing between the containers
-        topRow.setAlignment(Pos.CENTER);
+    /* -------------- Fields -------------- */
+    private String sessionId = UUID.randomUUID().toString(); // Changed from final to non-final
+    private final WebView chatView = new WebView();
+    private final WebEngine webEngine = chatView.getEngine();
+    private final StringBuilder htmlBuffer = new StringBuilder();
+    private final Parser mdParser = Parser.builder().build();
+    private final HtmlRenderer mdRenderer = HtmlRenderer.builder().build();
+    private final TextField chatInput = new TextField();
+    private final VBox layout;
+    private final HBox cards; // Cards section
 
-        // Left Container - "总资产" & "设置月存储"
-        VBox leftContainer = new VBox();
-        leftContainer.setSpacing(20);
-        leftContainer.setStyle("-fx-background-color: #cce5ff; -fx-background-radius: 10;");  // Light blue background
-        leftContainer.getChildren().add(createInfoCard("Monthly Storage", "$" + money, "#cce5ff", "#004085"));
-        Button leftButton = new Button("Setting");
-        leftButton.setStyle("-fx-background-color: #004085; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10px 20px;");
-        leftContainer.getChildren().add(leftButton);
+    /* -------------- Constructor -------------- */
+    private BudgetUi() {
+        /* ===== Cards Area ===== */
+        cards = new HBox(40);
+        cards.setAlignment(Pos.CENTER);
+        cards.setMaxWidth(1000);
 
-        // Right Container - "设置储蓄目标" & "本月花费"
-        VBox rightContainer = new VBox();
-        rightContainer.setSpacing(20);
-        rightContainer.setStyle("-fx-background-color: #f1f8ff; -fx-background-radius: 10;"); // Light gray-blue background
-        rightContainer.getChildren().add(createInfoCard("Saving goals", "$" + money, "#f1f8ff", "#004085"));
-        Button rightButton = new Button("Setting");
-        rightButton.setStyle("-fx-background-color: #004085; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10px 20px;");
-        rightContainer.getChildren().add(rightButton);
+        // Initialize cards
+        updateCards();
 
-        // Set the HGrow property so both containers expand equally
-        HBox.setHgrow(leftContainer, Priority.ALWAYS);
-        HBox.setHgrow(rightContainer, Priority.ALWAYS);
+        // Add listener for date change
+        DateContext.yearProperty().addListener((obs, oldVal, newVal) -> updateCards());
+        DateContext.monthProperty().addListener((obs, oldVal, newVal) -> updateCards());
 
-        // Add the left and right containers to the top row
-        topRow.getChildren().addAll(leftContainer, rightContainer);
+        /* ===== Chat Area ===== */
+        Button newChatBtn = new Button("New Chat");
+        newChatBtn.setStyle("-fx-background-color:#555; -fx-text-fill:white;");
+        newChatBtn.setOnAction(e -> {
+            sessionId = UUID.randomUUID().toString();
+            htmlBuffer.setLength(0);
+            htmlBuffer.append("<html><head><style>body{font-family:sans-serif;padding:10px;} "
+                    + ".user{color:#0d47a1;} .ai{color:#004d40;} </style></head><body>");
+            webEngine.loadContent(htmlBuffer.toString());
+        });
 
-        // Center Row - "AI" & "Output Text Area"
-        HBox centerRow = new HBox();
-        centerRow.setPadding(new Insets(20));
-        centerRow.setSpacing(200); // Adjust spacing as needed
-        centerRow.setAlignment(Pos.CENTER);
+        ImageView icon = new ImageView("https://brandlogos.net/wp-content/uploads/2025/02/deepseek_logo_icon-logo_brandlogos.net_s5bgc.png");
+        icon.setFitWidth(40); icon.setPreserveRatio(true);
 
-        // Progress Bar Section - Align with Left VBox (leftContainer)
-        ProgressBar progressBar = new ProgressBar(0.69); // Example progress of 56%
-        Label progressLabel = new Label("69%");
-        HBox progressContainer = new HBox(progressBar, progressLabel);
-        progressContainer.setAlignment(Pos.CENTER_LEFT);
-        progressContainer.setSpacing(10);
+        HBox topRow = new HBox(10, newChatBtn, icon);
+        topRow.setAlignment(Pos.CENTER_LEFT);
 
-        // Progress Bar Section1 - Align with Right VBox (rightContainer)
-        ProgressBar progressBar1 = new ProgressBar(0.84); // Example progress of 56%
-        Label progressLabel1 = new Label("84%");
-        HBox progressContainer1 = new HBox(progressBar1, progressLabel1);
-        progressContainer1.setAlignment(Pos.CENTER_RIGHT);
-        progressContainer1.setSpacing(10);
+        // Initialize WebView
+        chatView.setPrefHeight(400);
+        htmlBuffer.append("<html><head><style>body{font-family:sans-serif;padding:10px;} "
+                + ".user{color:#0d47a1;} .ai{color:#004d40;} </style></head><body>");
+        webEngine.loadContent(htmlBuffer.toString());
 
-        // Set the HGrow property for both progress bars to ensure they expand equally
-        HBox.setHgrow(progressContainer, Priority.ALWAYS);
-        HBox.setHgrow(progressContainer1, Priority.ALWAYS);
+        chatInput.setPromptText("Enter your message...");
+        chatInput.setOnAction(e -> sendMsg());
+        Button sendBtn = new Button("Send");
+        sendBtn.setStyle("-fx-background-color:#114d9d; -fx-text-fill:white;");
+        sendBtn.setOnAction(e -> sendMsg());
 
-        // Add the progress containers to the center row
-        centerRow.getChildren().addAll(progressContainer, progressContainer1);
+        HBox inputRow = new HBox(10, chatInput, sendBtn);
+        HBox.setHgrow(chatInput, Priority.ALWAYS);
 
-        // AI Icon
-        ImageView aiIcon = new ImageView("https://img1.baidu.com/it/u=1669554297,2393016886&fm=253&fmt=auto&app=120&f=JPEG?w=826&h=500");
-        aiIcon.setFitWidth(50);
-        aiIcon.setFitHeight(50);
-        aiIcon.setPreserveRatio(true);
-        aiIcon.setSmooth(true);
-        aiIcon.setCache(true);
+        VBox chatBox = new VBox(10, topRow, chatView, inputRow);
+        chatBox.setPadding(new Insets(20)); chatBox.setMaxWidth(1000);
 
-        // Output Text Area (smaller size to leave space for input area)
-        TextArea outputTextArea = new TextArea();
-        outputTextArea.setEditable(false);
-        outputTextArea.setPromptText("AI output...");
-        outputTextArea.setPrefHeight(100); // Reduce height for output area
-
-        // New TextArea and Button at the bottom
-        HBox inputRow = new HBox();
-        inputRow.setPadding(new Insets(20));
-        inputRow.setSpacing(10); // Set spacing between the text area and button
-        inputRow.setAlignment(Pos.CENTER);
-
-        // TextArea for user input (multi-line and scrollable)
-        TextArea textArea = new TextArea();
-        textArea.setPromptText("请输入内容..."); // Placeholder text
-        textArea.setPrefWidth(800); // Make the text area take up all available width
-        textArea.setPrefHeight(Double.MAX_VALUE);
-        textArea.setStyle("-fx-font-size: 14px;");
-        textArea.setWrapText(true); // Allow text to wrap
-
-        // Button
-        Button inputButton = new Button("submit");
-        inputButton.setStyle("-fx-background-color: #004085; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10px 20px;");
-
-        // Add TextArea and Button to the input row
-        inputRow.getChildren().addAll(textArea, inputButton);
-
-        // Main Layout
-        VBox dashboardLayout = new VBox();
-        dashboardLayout.setSpacing(20);
-        dashboardLayout.getChildren().addAll(topRow, centerRow, aiIcon, outputTextArea, inputRow); // Add input row to the layout
-
-        return dashboardLayout;
+        /* ===== Page Layout ===== */
+        layout = new VBox(30, cards, chatBox);
+        layout.setAlignment(Pos.TOP_CENTER);
+        layout.setPadding(new Insets(30));
+        layout.setStyle("-fx-background-color:#fafafa;");
     }
 
+    /* -------------- Update Card Section -------------- */
+    private void updateCards() {
+        // Get current month's transactions
+        List<Transaction> txs = JsonUtils.getTransactionsByMonth(
+                DateContext.getYear(),
+                DateContext.getMonth()
+        );
 
+        double monthlyExpense = 0;
+        for (Transaction t : txs) {
+            monthlyExpense += t.getAmount();
+        }
 
-    public static VBox createInfoCard(String title, String value, String backgroundColor, String textColor) {
-        VBox infoCard = new VBox(20);
-        infoCard.setStyle("-fx-background-color: " + backgroundColor + "; -fx-border-radius: 10px; -fx-padding: 10;");
-        Label titleLabel = new Label(title);
-        titleLabel.setFont(new Font(20));
-        titleLabel.setStyle("-fx-text-fill: " + textColor + ";");
-        Label valueLabel = new Label(value);
-        valueLabel.setFont(new Font(20));
-        valueLabel.setStyle("-fx-text-fill: " + textColor + ";");
+        // Clear old cards
+        cards.getChildren().clear();
 
-        infoCard.getChildren().addAll(titleLabel, valueLabel);
-        return infoCard;
+        // Create new cards
+        Card storageCard = new Card("Monthly Expense", monthlyExpense);
+        Card goalCard = new Card("Monthly Income", FinanceContext.getMonthlyIncome());
+
+        // Add new cards to layout
+        cards.getChildren().addAll(storageCard.box, goalCard.box);
     }
 
+    /* -------------- Send Message to AI -------------- */
+    private void sendMsg() {
+        String txt = chatInput.getText().trim();
+        if(txt.isEmpty()) return;
 
+        appendMarkdown("**You:** " + txt, "user");
+        chatInput.clear();
+
+        new Thread(() -> {
+            String reply = DeepSeek.chat(sessionId, txt);
+            Platform.runLater(() -> appendMarkdown("**AI:** " + reply, "ai"));
+        }).start();
+    }
+
+    /** Render a markdown message and append to WebView */
+    private void appendMarkdown(String md, String cssClass) {
+        Node document = mdParser.parse(md);
+        String html = mdRenderer.render(document);
+        htmlBuffer.append("<div class=\"")
+                .append(cssClass)
+                .append("\">")
+                .append(html)
+                .append("</div>");
+        webEngine.loadContent(htmlBuffer.toString() + "</body></html>");
+    }
+
+    /* ==================================================================== */
+    /*                            Internal Card Class                      */
+    /* ==================================================================== */
+    private static class Card {
+        private final VBox box = new VBox(8);
+
+        Card(String title, double value){
+            box.setPadding(new Insets(20));
+            box.setAlignment(Pos.TOP_LEFT);
+            box.setPrefSize(280, 140);
+            box.setStyle("-fx-background-color:#d8e9ff; -fx-background-radius:8;");
+
+            Label lbl = new Label(title);
+            lbl.setStyle("-fx-font-size:18; -fx-text-fill:#0d47a1; -fx-font-weight:bold;");
+
+            Label money = new Label(String.format("$%,.2f", value));
+            money.setStyle("-fx-font-size:26; -fx-text-fill:#0d47a1; -fx-font-weight:bold;");
+
+            /* --- Progress Bar --- */
+            double monthlyExpense = value;
+            double monthlyIncome = FinanceContext.getMonthlyIncome();
+            double progress = monthlyIncome > 0 ? monthlyExpense / monthlyIncome : 0;
+
+            // Progress bar color changes depending on thresholds
+            ProgressBar bar = new ProgressBar(1.0);
+            bar.setPrefWidth(200);
+            String barColor;
+            if (progress > 1.2) {       // 20% over budget - dark red
+                barColor = "#d32f2f";
+            } else if (progress > 1.0) { // Slightly over budget - red
+                barColor = "#e53935";
+            } else if (progress > 0.8) { // Near budget - orange
+                barColor = "#ff9800";
+            } else {                     // Within budget - blue
+                barColor = "#1976d2";
+            }
+            bar.setProgress(Math.min(progress, 1.0));
+            bar.setStyle(String.format("-fx-accent:%s;", barColor));
+
+            Label percent = new Label(String.format("%.0f%%", progress * 100));
+            percent.setTextFill(Color.web(barColor));
+
+            HBox barRow = new HBox(10, bar, percent);
+            barRow.setAlignment(Pos.CENTER_LEFT);
+
+            box.getChildren().addAll(lbl, money, barRow);
+        }
+    }
 }
