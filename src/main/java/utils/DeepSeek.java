@@ -214,3 +214,4 @@ public class DeepSeek {
     // Other helper methods like budgetSuggestion can be kept or added here.
     // -----------------------------------------
 }
+
